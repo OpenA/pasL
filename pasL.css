@@ -1,0 +1,77 @@
+/* === pasL elements style === */
+
+.pasl-col-sect {
+	height: 100%;
+	display: inline-block;
+}
+.pasl-row-sect {
+	width: 100%;
+	display: block;
+}
+.pasl-dark {
+	background-color: rgba(33,33,33,.6);
+}
+.pasl-rcons {
+	background-color: white;
+	border: 1px solid black;
+	position: absolute;
+	opacity: 0.5;
+}
+.pasl-selection-area {
+	position: relative;
+	cursor: move;
+}
+
+#rcon_t-l, #rcon_t-r, #rcon_b-l, #rcon_b-r {
+	min-height: 5px;
+	min-width: 5px;
+}
+#rcon_t-l {
+	top: -5px;
+	left: -5px;
+	cursor: nw-resize;
+}
+#rcon_t-r {
+	top: -5px;
+	right: -5px;
+	cursor: ne-resize;
+}
+#rcon_b-l {
+	bottom: -5px;
+	left: -5px;
+	cursor: sw-resize;
+}
+#rcon_b-r {
+	bottom: -5px;
+	right: -5px;
+	cursor: se-resize;
+}
+
+#rcon_l-c {
+	top: 20%;
+	left: -3px;
+	width: 1px;
+	bottom: 20%;
+	cursor: w-resize;
+}
+#rcon_t-c {
+	top: -3px;
+	left: 20%;
+	right: 20%;
+	height: 1px;
+	cursor: n-resize;
+}
+#rcon_r-c {
+	top: 20%;
+	right: -3px;
+	width: 1px;
+	bottom: 20%;
+	cursor: e-resize;
+}
+#rcon_b-c {
+	left: 20%;
+	right: 20%;
+	height: 1px;
+	bottom: -3px;
+	cursor: s-resize;
+} /* = = = = = = = = */
