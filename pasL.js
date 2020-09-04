@@ -2,8 +2,11 @@
 class pasL {
 
 	constructor(options = {}) {
-
-		const { lock = false, autoadd = true, edgies = true } = options;
+		/* "lock"    - is just lock aspect of selected area (selected area proportions). You can change this parameter later
+		 * "autoadd" - automatically add select area element with my_pasl.selectZone(img) call. You can change this parameter later
+		 * "edgies"  - add active flat edges. This parameter set only only with new object create
+		 */
+		const { lock = false, autoadd = true, edgies = false } = options;
 
 		const box  = _setup('div', { id: 'pasL_box'        , style: 'position: absolute; z-index: 9999999;'}),
 		zoneTop    = _setup('div', { id: 'pasL_zone_top'   , class: 'pasl-row-sect pasl-dark' }),
@@ -14,18 +17,31 @@ class pasL {
 		zoneCenter = _setup('div', { id: 'pasL_zone_center', class: 'pasl-col-sect'           });
 
 		box.addEventListener('click', e => {
-			e.stopPropagation();
+			e.stopPropagation(); // stop any global clicking handlers
 			e.preventDefault();
 		});
 		zoneSelect.addEventListener(_PointHandler.START, this);
+
+		// the select "box" contains:
+		// three vertical blocks (left and right is darked, central - transparent)
+		box       .append( zoneLeft, zoneCenter, zoneRight  );
+		// center vertical block contains three horisontal blocks (top and botom is darked, central - transparent)
+		zoneCenter.append( zoneTop , zoneSelect, zoneBottom );
+		// center horisontal block (selection block) has four absolute position corners
 		zoneSelect.append(
 			_setup('div', { id: 'rcon_t-l', class: 'pasl-rcons' }),
 			_setup('div', { id: 'rcon_t-r', class: 'pasl-rcons' }),
 			_setup('div', { id: 'rcon_b-l', class: 'pasl-rcons' }),
 			_setup('div', { id: 'rcon_b-r', class: 'pasl-rcons' })
 		);
-		zoneCenter.append( zoneTop , zoneSelect, zoneBottom );
-		box       .append( zoneLeft, zoneCenter, zoneRight  );
+		if (edgies) { // and optional for active edges
+			zoneSelect.append(
+				_setup('div', { id: 'rcon_l-c', class: 'pasl-rcons' }),
+				_setup('div', { id: 'rcon_t-c', class: 'pasl-rcons' }),
+				_setup('div', { id: 'rcon_r-c', class: 'pasl-rcons' }),
+				_setup('div', { id: 'rcon_b-c', class: 'pasl-rcons' })
+			);
+		}
 
 		this.lock    = lock;
 		this.autoadd = autoadd;
@@ -39,16 +55,8 @@ class pasL {
 			select: zoneSelect.style,
 			center: zoneCenter.style
 		}
-		if (edgies) {
-			zoneSelect.append(
-				_setup('div', { id: 'rcon_l-c', class: 'pasl-rcons' }),
-				_setup('div', { id: 'rcon_t-c', class: 'pasl-rcons' }),
-				_setup('div', { id: 'rcon_r-c', class: 'pasl-rcons' }),
-				_setup('div', { id: 'rcon_b-c', class: 'pasl-rcons' })
-			);
-		}
 	}
-
+	// this setters change width / height styles above the block groups
 	get x ( ) { return this.coords.x1 }
 	set x (i) {
 		const { w, imgW }     =    this.coords;
@@ -74,7 +82,7 @@ class pasL {
 		this.zone.bottom.height = `${this.coords.y2 = imgH - y1 - i }px`;
 	}
 	get rw ( ) { return this.coords.w }
-	set rw (i) {
+	set rw (i) { // "rw" it mean reverse width (expands the select area in the opposite direction)
 		const { x2, imgW }     =    this.coords;
 		this.zone.select.width = `${this.coords.w  = (i = imgW < i + x2 ? imgW - x2 : Math.max(i,0)) }px`;
 		this.zone.left  .width = `${this.coords.x1 = imgW - x2 - i }px`;
@@ -85,21 +93,22 @@ class pasL {
 		this.zone.select.height = `${this.coords.h  = (i = imgH < i + y2 ? imgH - y2 : Math.max(i,0)) }px`;
 		this.zone.top   .height = `${this.coords.y1 = imgH - y2 - i }px`;
 	}
-
-	getCoords(){ 
+	// get real coordinates of selected area
+	getCoords() { 
 		const { x1, y1, w, h, imgW, imgH, realW, realH } = this.coords,
 			wR = realW / imgW,
 			hR = realH / imgH;
 		return [
-			Math.floor(x1 * wR), Math.floor(y1 * hR), // => [X, Y, W, H] original size
-			Math.floor(w  * wR), Math.floor(h  * hR)  // 
+			Math.floor(x1 * wR), Math.floor(y1 * hR), // returns real scale [X, Y, W, H] of selection
+			Math.floor(w  * wR), Math.floor(h  * hR)  // it can be used in canvas for crop/cut image parts
 		]
 	}
-	selectZone(img, x = 0, y = 0, w = 50, h = 50) {
-		const imgW = img.width;
-		const imgH = img.height;
-		this.coords.realW = img.naturalWidth  || imgW;
-		this.coords.realH = img.naturalHeight || imgH;
+	// this is a general function for apply selection area on the image
+	selectZone(img, x = 0, y = 0, w = 50, h = 50) { // x, y, w, h  arguments is optional and set the start selection position
+		const imgW = img.width; // it just gets the real and actual width / height of the first argument passed and blindly bounces off of them.
+		const imgH = img.height; // you can call this function as much as you like for recalc area params
+		this.coords.realW = img.naturalWidth  || imgW; // if naturalWidth/naturalHeight data not contains in element
+		this.coords.realH = img.naturalHeight || imgH; // the width/height are counted as them
 
 		this.box.style.width  = `${this.coords.imgW = imgW }px`;
 		this.box.style.height = `${this.coords.imgH = imgH }px`;
@@ -114,9 +123,9 @@ class pasL {
 		this.zone.top   .height = `${this.coords.y1 = imgH < y + h ? imgH - h : y }px`;
 		this.zone.bottom.height = `${this.coords.y2 = imgH - y - h }px`;
 
-		if (this.autoadd) {
-			img.before(this.box);
-		}
+		if (this.autoadd) { // note: just set this flag to false if you first argument passing is not an element
+			img.before(this.box); // or you can just doing something like:
+		} // { width: 500, ..., before: (box) => my_place.append(box) }
 	}
 
 	handleEvent(e) { // mouse/touch move handler
@@ -179,6 +188,7 @@ class pasL {
 	}
 };
 
+// an interlayer between touch devices and a mouse.
 const _PointHandler = 'ontouchstart' in window ? {
 	START : 'touchstart',
 	MOVE  : 'touchmove' ,
@@ -191,11 +201,14 @@ const _PointHandler = 'ontouchstart' in window ? {
 	getPos: o => (o.button === 0 ? o : null)
 };
 
+// simple utility for create/change DOM elements
 function _setup(el, attrs, events) {
-
+// example 1:
+// const el = _setup('span', { class: 'ex-elem', text: 'example' }, { click: () => console.log('hey there') });
 	if (!el)
 		return '';
-
+// example 2:
+//_setup(document.querySelector('.ex-elem'), { text: 'touch me', 'my-own-property': 'ok!', onmouseenter: ({ target }) => console.log(target.getAttribute('my-own-property')) });
 	switch (typeof el) {
 		case 'string':
 			el = document.createElement(el);
