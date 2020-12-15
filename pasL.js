@@ -55,6 +55,9 @@ class pasL {
 			select: zoneSelect.style,
 			center: zoneCenter.style
 		}
+		this.onMoveStart  = [];
+		this.onMoveChange = [];
+		this.onMoveEnd    = [];
 	}
 	// this setters change width / height styles above the block groups
 	get x ( ) { return this.coords.x1 }
@@ -178,13 +181,29 @@ class pasL {
 			this. x  = clientX - startX + endX;
 			this. y  = clientY - startY + endY;
 		});
-		const attach   = mv => { moveFunc(_PointHandler.getPos(mv)) };
+		const attach   = mv => {
+			this.onMoveChange.forEach(callback => callback());
+			moveFunc(_PointHandler.getPos(mv));
+		}
 		const deattach = () => {
+			this.onMoveEnd.forEach(callback => callback());
 			window.removeEventListener(_PointHandler.MOVE, attach);
 			window.removeEventListener(_PointHandler.END, deattach);
 		}
+		this.onMoveStart.forEach(callback => callback());
 		window.addEventListener(_PointHandler.MOVE, attach);
 		window.addEventListener(_PointHandler.END, deattach);
+	}
+
+	addListener(name, callback) {
+		let list = this[`on${name}`];
+		if (list && typeof callback == 'function' && !list.includes(callback))
+			list.push(callback);
+	}
+	removeListener(name, callback) {
+		let list = this[`on${name}`];
+		if (list)
+			list.splice(1, list.indexOf(callback));
 	}
 };
 
