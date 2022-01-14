@@ -22,53 +22,53 @@
 	cursor: move;
 }
 
-#rcon_t-l, #rcon_t-r, #rcon_b-l, #rcon_b-r {
+.pasl-rcons.t-l, .pasl-rcons.t-r, .pasl-rcons.b-l, .pasl-rcons.b-r {
 	min-height: 5px;
 	min-width: 5px;
 }
-#rcon_t-l {
+.pasl-rcons.t-l {
 	top: -5px;
 	left: -5px;
 	cursor: nw-resize;
 }
-#rcon_t-r {
+.pasl-rcons.t-r {
 	top: -5px;
 	right: -5px;
 	cursor: ne-resize;
 }
-#rcon_b-l {
+.pasl-rcons.b-l {
 	bottom: -5px;
 	left: -5px;
 	cursor: sw-resize;
 }
-#rcon_b-r {
+.pasl-rcons.b-r {
 	bottom: -5px;
 	right: -5px;
 	cursor: se-resize;
 }
 
-#rcon_l-c {
+.pasl-rcons.l-c {
 	top: 20%;
 	left: -3px;
 	width: 1px;
 	bottom: 20%;
 	cursor: w-resize;
 }
-#rcon_t-c {
+.pasl-rcons.t-c {
 	top: -3px;
 	left: 20%;
 	right: 20%;
 	height: 1px;
 	cursor: n-resize;
 }
-#rcon_r-c {
+.pasl-rcons.r-c {
 	top: 20%;
 	right: -3px;
 	width: 1px;
 	bottom: 20%;
 	cursor: e-resize;
 }
-#rcon_b-c {
+.pasl-rcons.b-c {
 	left: 20%;
 	right: 20%;
 	height: 1px;
