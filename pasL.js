@@ -3,134 +3,139 @@ class PasL {
 
 	constructor(options = {}) {
 		/* "lock"    - is just lock aspect of selected area (selected area proportions). You can change this parameter later
-		 * "autoadd" - automatically add select area element with my_pasl.selectZone(img) call. You can change this parameter later
+		 * "figure"  - 0: selection, 1: rectanle, 2: triangle
 		 * "edgies"  - add active flat edges. This parameter set only only with new object create
 		 */
-		const { lock = false, autoadd = true, edgies = false } = options;
+		const { lock = false, figure = 0, edgies = false } = options;
 
-		const box  = _setup('div', { id: 'pasL_box'        , style: 'position: absolute; z-index: 9999999;'}),
-		zoneTop    = _setup('div', { id: 'pasL_zone_top'   , class: 'pasl-row-sect pasl-dark' }),
-		zoneRight  = _setup('div', { id: 'pasL_zone_right' , class: 'pasl-col-sect pasl-dark' }),
-		zoneLeft   = _setup('div', { id: 'pasL_zone_left'  , class: 'pasl-col-sect pasl-dark' }),
-		zoneBottom = _setup('div', { id: 'pasL_zone_bottom', class: 'pasl-row-sect pasl-dark' }),
-		zoneSelect = _setup('div', { id: 'pasL_zone_select', class: 'pasl-selection-area'     }),
-		zoneCenter = _setup('div', { id: 'pasL_zone_center', class: 'pasl-col-sect'           });
+		const box = _setup('div', { class: 'pasL-box', style: 'position: absolute;'}),
+		    srect = _setup('div', { class: 'pasL-srect' });
+
+		let _x1 = 0, _y1 = 0, _w = 0, _h = 0, _x2 = 0, _y2 = 0;
+
+		let left = { get: () => _x1 },    top = { get: () => _y1 },
+		   right = { get: () => _x2 }, bottom = { get: () => _y2 },
+		   width = { get: () => _w  }, height = { get: () => _h  };
+
+		width.set  = i => { srect.style.width  = `${_w = i}px`; }
+		height.set = i => { srect.style.height = `${_h = i}px`; }
 
 		box.addEventListener('click', e => {
 			e.stopPropagation(); // stop any global clicking handlers
 			e.preventDefault();
 		});
-		zoneSelect.addEventListener(_PointHandler.START, this);
+		srect.addEventListener(_PointHandler.START, this);
 
-		// the select "box" contains:
-		// three vertical blocks (left and right is darked, central - transparent)
-		box       .append( zoneLeft, zoneCenter, zoneRight  );
-		// center vertical block contains three horisontal blocks (top and botom is darked, central - transparent)
-		zoneCenter.append( zoneTop , zoneSelect, zoneBottom );
-		// center horisontal block (selection block) has four absolute position corners
-		zoneSelect.append(
-			_setup('div', { class: 'pasl-rcons t-l' }),
-			_setup('div', { class: 'pasl-rcons t-r' }),
-			_setup('div', { class: 'pasl-rcons b-l' }),
-			_setup('div', { class: 'pasl-rcons b-r' })
+		if (figure === 0) {
+			let _Top    = _setup('div', { class: 'pasL-row-sect pasL-dark' }),
+			    _Right  = _setup('div', { class: 'pasL-col-sect pasL-dark' }),
+			    _Left   = _setup('div', { class: 'pasL-col-sect pasL-dark' }),
+			    _Bottom = _setup('div', { class: 'pasL-row-sect pasL-dark' }),
+			    _Center = _setup('div', { class: 'pasL-col-sect' });
+			// the select "box" contains:
+			// three vertical blocks (left and right is darked, central - transparent)
+			box    .append( _Left, _Center, _Right );
+			// center vertical block contains three horisontal blocks (top and botom is darked, central - transparent)
+			_Center.append( _Top , srect, _Bottom );
+			// center horisontal block (selection block) has four absolute position corners
+			left  .set = i => { _Left  .style.width  = `${_x1 = i}px`; };
+			top   .set = i => { _Top   .style.height = `${_y1 = i}px`; };
+			right .set = i => { _Right .style.width  = `${_x2 = i}px`; };
+			bottom.set = i => { _Bottom.style.height = `${_y2 = i}px`; };
+		} else {
+			box.append(srect);
+			box.style.maxWidth = 0;
+			box.style.maxHeight = 0;
+			srect.style.backgroundColor = 'white';
+
+			left  .set = i => { srect.style.left = `${_x1 = i}px`; };
+			top   .set = i => { srect.style.top  = `${_y1 = i}px`; };
+			right .set = i => { `${_x2 = i}px`; };
+			bottom.set = i => { `${_y2 = i}px`; };
+		}
+		srect.append(
+			_setup('div', { class: 'pasL-rcons t-l' }),
+			_setup('div', { class: 'pasL-rcons t-r' }),
+			_setup('div', { class: 'pasL-rcons b-l' }),
+			_setup('div', { class: 'pasL-rcons b-r' })
 		);
 		if (edgies) { // and optional for active edges
-			zoneSelect.append(
-				_setup('div', { class: 'pasl-rcons l-c' }),
-				_setup('div', { class: 'pasl-rcons t-c' }),
-				_setup('div', { class: 'pasl-rcons r-c' }),
-				_setup('div', { class: 'pasl-rcons b-c' })
+			srect.append(
+				_setup('div', { class: 'pasL-rcons l-c' }),
+				_setup('div', { class: 'pasL-rcons t-c' }),
+				_setup('div', { class: 'pasL-rcons r-c' }),
+				_setup('div', { class: 'pasL-rcons b-c' })
 			);
-		}
-
-		this.lock    = lock;
-		const coords = Object.create(null);
-
-		// this functions change width / height styles above the block groups
-		const setPosition = (x, y) => {
-			const { w, h, imgW, imgH } = coords;
-			if (Number.isFinite(x)) {
-				zoneLeft .style.width = `${coords.x1 = (x = imgW < x + w ? imgW - w : x > 0 ? x : 0) }px`;
-				zoneRight.style.width = `${coords.x2 = imgW - x - w }px`;
-			}
-			if (Number.isFinite(y)) {
-				zoneTop   .style.height = `${coords.y1 = (y = imgH < y + h ? imgH - h : y > 0 ? y : 0) }px`;
-				zoneBottom.style.height = `${coords.y2 = imgH - y - h }px`;
-			}
-		}
-		const setWidth = (w, re = false) => {
-			const imgW = coords.imgW;
-			let x = re ? coords.x2 : coords.x1; 
-			if (Number.isFinite(w)) {
-				w = imgW < w + x ? imgW - x : w > 0 ? w : 0,
-				x = imgW - x - w;
-				if (re) {
-					zoneLeft.style.width = `${coords.x1 = x }px`;
-				} else {
-					zoneRight.style.width = `${coords.x2 = x }px`;
-				}
-				zoneSelect.style.width = `${coords.w = w }px`;
-			}
-		}
-		const setHeight = (h, re = false) => {
-			const imgH = coords.imgH;
-			let y = re ? coords.y2 : coords.y1; 
-			if (Number.isFinite(h)) {
-				h = imgH < h + y ? imgH - y : h > 0 ? h : 0,
-				y = imgH - y - h;
-				if (re) {
-					zoneTop.style.height = `${coords.y1 = y }px`;
-				} else {
-					zoneBottom.style.height = `${coords.y2 = y }px`;
-				}
-				zoneSelect.style.height = `${coords.h = h }px`;
-			}
-		}
-		// this is a general function for apply selection area on the image
-		const selectZone = (img, x = 0, y = 0, w = 50, h = 50, autoadd = false) => { // x, y, w, h  arguments is optional and set the start selection position
-			const imgW = img.width; // it just gets the real and actual width / height of the first argument passed and blindly bounces off of them.
-			const imgH = img.height; // you can call this function as much as you like for recalc area params
-			coords.realW = img.naturalWidth  || imgW; // if naturalWidth/naturalHeight data not contains in element
-			coords.realH = img.naturalHeight || imgH; // the width/height are counted as them
-
-			box.style.width  = `${coords.imgW = imgW }px`;
-			box.style.height = `${coords.imgH = imgH }px`;
-
-			//first set the X position of select zone and its width
-			zoneSelect.style.width = `${coords.w  = imgW < w + x ? imgW - x : w }px`;
-			zoneLeft  .style.width = `${coords.x1 = imgW < x + w ? imgW - w : x }px`;
-			zoneRight .style.width = `${coords.x2 = imgW - x - w }px`;
-
-			//second set the Y position of select zone and its height
-			zoneSelect.style.height = `${coords.h  = imgH < h + y ? imgH - y : h }px`;
-			zoneTop   .style.height = `${coords.y1 = imgH < y + h ? imgH - h : y }px`;
-			zoneBottom.style.height = `${coords.y2 = imgH - y - h }px`;
-
-			if (autoadd) { // note: just set this flag to false if you first argument passing is not an element
-				img.before(box); // or you can just doing something like:
-			} // { width: 500, ..., before: (box) => my_place.append(box) }
 		}
 		Object.defineProperties(this, {
 			/* public */
-			box         : { enumerable: true, value: box },
-			selectZone  : { enumerable: true, value: selectZone  },
-			setPosition : { enumerable: true, value: setPosition },
-			setWidth    : { enumerable: true, value: setWidth    },
-			setHeight   : { enumerable: true, value: setHeight   },
+			box : { enumerable: true, value: box  },
+			lock:  {  writable: true, value: lock },
+			zoneW: {  writable: true, value: 0 },
+			zoneH: {  writable: true, value: 0 },
 
-			/* private */
-			_coords     : { value: coords },
+			left, top, right, bottom, width, height
 		});
 	}
 
+	// this functions change width / height styles above the block groups
+	setPosition(x, y) {
+		const { width, height, zoneW, zoneH } = this;
+		if (Number.isFinite(x)) {
+			this.left = (x = zoneW < x + width ? zoneW - width : x > 0 ? x : 0),
+			this.right = zoneW - x - width;
+		}
+		if (Number.isFinite(y)) {
+			this.top = (y = zoneH < y + height ? zoneH - height : y > 0 ? y : 0),
+			this.bottom = zoneH - y - height;
+		}
+	}
+	setWidth(w, re = false) {
+		const { left, right, zoneW } = this;
+		let x = re ? right : left;
+		if (Number.isFinite(w)) {
+			this.width = (w = zoneW < w + x ? zoneW - x : w > 0 ? w : 0),
+			this[re ? 'left' : 'right'] = zoneW - x - w;
+		}
+	}
+	setHeight(h, re = false) {
+		const { top, bottom, zoneH } = this;
+		let y = re ? bottom : top; 
+		if (Number.isFinite(h)) {
+			this.height = (h = zoneH < h + y ? zoneH - y : h > 0 ? h : 0),
+			this[re ? 'top' : 'bottom'] = zoneH - y - h;
+		}
+	}
+	// this is a general function for apply selection area on the image
+	setZone(zW, zH, x = 0, y = 0, w = 0, h = 0) { // x, y, w, h  arguments is optional and set the start selection position
+
+		this.box.style.width  = `${ this.zoneW = zW }px`;
+		this.box.style.height = `${ this.zoneH = zH }px`;
+
+		if (!(w > 0) || !(h > 0)) {
+			x = 0, w = zW, y = 0, h = zH;
+			if (w > h)
+				x = (w - h) * .5, w = h;
+			else if (w < h)
+				y = (h - w) * .5, h = w;
+		} else {
+			if (zW < x + w)
+				x = zW - w, w = zW - x;
+			if (zH < y + h)
+				y = zH - h, h = zH - y;
+		}
+		//first set the X position of select zone and its width
+		this.left = x, this.width = w, this.right = zW - x - w;
+		//second set the Y position of select zone and its height
+		this.top  = y, this.height = h, this.bottom = zH - y - h;
+	}
+
 	// get real coordinates of selected area
-	getCoords() { 
-		const { x1, y1, w, h, imgW, imgH, realW, realH } = this._coords,
-			wR = realW / imgW,
-			hR = realH / imgH;
+	getCoords(scale = 1) { 
+		const { left, top, width, height } = this;
 		return [
-			Math.floor(x1 * wR), Math.floor(y1 * hR), // returns real scale [X, Y, W, H] of selection
-			Math.floor(w  * wR), Math.floor(h  * hR)  // it can be used in canvas for crop/cut image parts
+			Math.floor(left * scale), Math.floor(top * scale), // returns real scale [X, Y, W, H] of selection
+			Math.floor(width * scale), Math.floor(height * scale), // it can be used in canvas for crop/cut image parts
 		]
 	}
 
@@ -148,8 +153,8 @@ class PasL {
 		const startY      = point.clientY;
 		const lock        = this.lock;
 
-		const endX = this._coords[name === 'pasl-rcons' ? 'w' : 'x1'];
-		const endY = this._coords[name === 'pasl-rcons' ? 'h' : 'y1'];
+		const endX = name === 'pasL-rcons' ? this.width : this.left;
+		const endY = name === 'pasL-rcons' ? this.height : this.top;
 
 		const moveFunc = (
 			type === 't-l' || type === 'l-c' && lock ? ({ clientX, clientY }) => {
