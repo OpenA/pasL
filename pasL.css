@@ -22,56 +22,47 @@
 	cursor: move;
 }
 
-.pasL-rcons.t-l, .pasL-rcons.t-r, .pasL-rcons.b-l, .pasL-rcons.b-r {
-	min-height: 5px;
-	min-width: 5px;
+.pasL-rcons.l-t, .pasL-rcons.r-t, .pasL-rcons.l-b, .pasL-rcons.r-b {
+	padding: 4px;
 }
-.pasL-rcons.t-l {
-	top: -5px;
-	left: -5px;
+.pasL-rcons.l-t {
+	top: -7px; left: -7px;
 	cursor: nw-resize;
 }
-.pasL-rcons.t-r {
-	top: -5px;
-	right: -5px;
+.pasL-rcons.r-t {
+	top: -7px; right: -7px;
 	cursor: ne-resize;
 }
-.pasL-rcons.b-l {
-	bottom: -5px;
-	left: -5px;
+.pasL-rcons.l-b {
+	bottom: -7px; left: -7px;
 	cursor: sw-resize;
 }
-.pasL-rcons.b-r {
-	bottom: -5px;
-	right: -5px;
+.pasL-rcons.r-b {
+	bottom: -7px; right: -7px;
 	cursor: se-resize;
 }
 
-.pasL-rcons.l-c {
-	top: 20%;
+.pasL-rcons.c-l {
+	top: 0; bottom: 0;
 	left: -3px;
-	width: 1px;
-	bottom: 20%;
+	border-left: 2px dashed;
 	cursor: w-resize;
 }
-.pasL-rcons.t-c {
+.pasL-rcons.c-t {
+	left: 0; right: 0;
 	top: -3px;
-	left: 20%;
-	right: 20%;
-	height: 1px;
+	border-top: 2px dashed;
 	cursor: n-resize;
 }
-.pasL-rcons.r-c {
-	top: 20%;
+.pasL-rcons.c-r {
+	top: 0; bottom: 0;
 	right: -3px;
-	width: 1px;
-	bottom: 20%;
+	border-right: 2px dashed;
 	cursor: e-resize;
 }
-.pasL-rcons.b-c {
-	left: 20%;
-	right: 20%;
-	height: 1px;
+.pasL-rcons.c-b {
+	left: 0; right: 0;
 	bottom: -3px;
+	border-bottom: 2px dashed;
 	cursor: s-resize;
 } /* = = = = = = = = */

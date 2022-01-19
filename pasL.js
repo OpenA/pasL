@@ -1,12 +1,11 @@
 
 class PasL {
 
-	constructor(options = {}) {
-		/* "lock"    - is just lock aspect of selected area (selected area proportions). You can change this parameter later
-		 * "figure"  - 0: selection, 1: rectanle, 2: triangle
-		 * "edgies"  - add active flat edges. This parameter set only only with new object create
-		 */
-		const { lock = false, figure = 0, edgies = false } = options;
+	/* "lock"    - is just lock aspect of selected area (selected area proportions). You can change this parameter later
+	 * "figure"  - 0: selection, 1: rectanle, 2: triangle
+	 * "edgies"  - add active flat edges. This parameter set only only with new object create
+	 */
+	constructor({ lock = false, figure = 0, edgies = false }) {
 
 		const box = _setup('div', { class: 'pasL-box', style: 'position: absolute;'}),
 		    srect = _setup('div', { class: 'pasL-srect' });
@@ -20,11 +19,7 @@ class PasL {
 		width.set  = i => { srect.style.width  = `${_w = i}px`; }
 		height.set = i => { srect.style.height = `${_h = i}px`; }
 
-		box.addEventListener('click', e => {
-			e.stopPropagation(); // stop any global clicking handlers
-			e.preventDefault();
-		});
-		srect.addEventListener(_PointHandler.START, this);
+		srect.addEventListener(onScreen.PointDown, this);
 
 		if (figure === 0) {
 			let _Top    = _setup('div', { class: 'pasL-row-sect pasL-dark' }),
@@ -54,17 +49,17 @@ class PasL {
 			bottom.set = i => { `${_y2 = i}px`; };
 		}
 		srect.append(
-			_setup('div', { class: 'pasL-rcons t-l' }),
-			_setup('div', { class: 'pasL-rcons t-r' }),
-			_setup('div', { class: 'pasL-rcons b-l' }),
-			_setup('div', { class: 'pasL-rcons b-r' })
+			_setup('div', { class: 'pasL-rcons l-t' }),
+			_setup('div', { class: 'pasL-rcons r-t' }),
+			_setup('div', { class: 'pasL-rcons l-b' }),
+			_setup('div', { class: 'pasL-rcons r-b' })
 		);
 		if (edgies) { // and optional for active edges
-			srect.append(
-				_setup('div', { class: 'pasL-rcons l-c' }),
-				_setup('div', { class: 'pasL-rcons t-c' }),
-				_setup('div', { class: 'pasL-rcons r-c' }),
-				_setup('div', { class: 'pasL-rcons b-c' })
+			srect.prepend(
+				_setup('div', { class: 'pasL-rcons c-l' }),
+				_setup('div', { class: 'pasL-rcons c-t' }),
+				_setup('div', { class: 'pasL-rcons c-r' }),
+				_setup('div', { class: 'pasL-rcons c-b' })
 			);
 		}
 		Object.defineProperties(this, {
@@ -141,73 +136,74 @@ class PasL {
 
 	handleEvent(e) { // mouse/touch move handler
 
-		const point = _PointHandler.getPos(e);
-		if ( !point )
-			return;
+		const start = onScreen.getPoint2D(e);
 
-		e.stopPropagation();
+		if ( !start )
+			return;
 		e.preventDefault();
 
 		const [name,type] = e.target.classList;
-		const startX      = point.clientX;
-		const startY      = point.clientY;
-		const lock        = this.lock;
+		const { left, top, width, height, zoneW, zoneH, lock } = this;
 
-		const endX = name === 'pasL-rcons' ? this.width : this.left;
-		const endY = name === 'pasL-rcons' ? this.height : this.top;
+		if (name === 'pasL-rcons') {
 
-		const moveFunc = (
-			type === 't-l' || type === 'l-c' && lock ? ({ clientX, clientY }) => {
-			const rx = startX - clientX + endX;
-			const ry = startY - clientY + endY;
-			this.setWidth(lock && ry > rx ? ry : rx, true);
-			this.setHeight(lock && rx > ry ? rx : ry, true);
-			this.box.dispatchEvent(new CustomEvent('PasL sizeChange'));
-		} : type === 't-r' || type === 't-c' && lock ? ({ clientX, clientY }) => {
-			const x  = clientX - startX + endX;
-			const ry = startY - clientY + endY;
-			this.setWidth(lock && ry > x ? ry : x);
-			this.setHeight(lock && x > ry ? x : ry, true);
-			this.box.dispatchEvent(new CustomEvent('PasL sizeChange'));
-		} : type === 'b-l' || type === 'b-c' && lock ? ({ clientX, clientY }) => {
-			const y  = clientY - startY + endY;
-			const rx = startX - clientX + endX;
-			this.setWidth(lock && y > rx ? y : rx, true);
-			this.setHeight(lock && rx > y ? rx : y);
-			this.box.dispatchEvent(new CustomEvent('PasL sizeChange'));
-		} : type === 'b-r' || type === 'r-c' && lock ? ({ clientX, clientY }) => {
-			const x  = clientX - startX + endX;
-			const y  = clientY - startY + endY;
-			this.setWidth(lock && y > x ? y : x);
-			this.setHeight(lock && x > y ? x : y);
-			this.box.dispatchEvent(new CustomEvent('PasL sizeChange'));
-		} : type === 'l-c' ? ({ clientX }) => {
-			this.setWidth(startX - clientX + endX, true);
-			this.box.dispatchEvent(new CustomEvent('PasL sizeChange'));
-		} : type === 't-c' ? ({ clientY }) => {
-			this.setHeight(startY - clientY + endY, true);
-			this.box.dispatchEvent(new CustomEvent('PasL sizeChange'));
-		} : type === 'r-c' ? ({ clientX }) => {
-			this.setWidth(clientX - startX + endX);
-			this.box.dispatchEvent(new CustomEvent('PasL sizeChange'));
-		} : type === 'b-c' ? ({ clientY }) => {
-			this.setHeight(clientY - startY + endY);
-			this.box.dispatchEvent(new CustomEvent('PasL sizeChange'));
-		} :/* type = 'm-v' */({ clientX, clientY }) => {
-			this.setPosition(clientX - startX + endX, clientY - startY + endY);
-			this.box.dispatchEvent(new CustomEvent('PasL posChange'));
-		});
-		const attach   = mv => {
-			moveFunc(_PointHandler.getPos(mv));
+			const p = type.charAt(0), a = type.charAt(2);
+
+			let rX = false, rY = false, sW = true, sH = true;
+
+			if (p === 'c') {
+				rX = (lock && a === 't') || a === 'l';
+				rY = (lock && a === 'l') || a === 't';
+				sW =  lock || a === 'l'  || a === 'r';
+				sH =  lock || a === 't'  || a === 'b';
+			} else {
+				rX = p === 'l', rY = a === 't';
+			}
+			let x = rX ? this.right : left;
+			let y = rY ? this.bottom : top;
+
+			var onMove = e => {
+
+				const mov = onScreen.getPoint2D(e);
+
+				let w = (rX ? start.x - mov.x : mov.x - start.x) + width;
+				let h = (rY ? start.y - mov.y : mov.y - start.y) + height;
+
+				if (lock)
+					w = h = Math.max(w,h);
+				if (sW) {
+					this.width = (w = zoneW < w + x ? zoneW - x : w > 0 ? w : 0),
+					this[rX ? 'left' : 'right'] = zoneW - x - w;
+				}
+				if (sH) {
+					this.height = (h = zoneH < h + y ? zoneH - y : h > 0 ? h : 0),
+					this[rY ? 'top' : 'bottom'] = zoneH - y - h;
+				}
+				this.box.dispatchEvent( new CustomEvent('PasL sizeChange') );
+			}
+		} else {
+			var onMove = e => {
+
+				let { x, y } = onScreen.getPoint2D(e);
+
+				x = x - start.x + left,
+				y = y - start.y + top;
+
+				this.left   = (x = zoneW < x + width  ? zoneW - width  : x > 0 ? x : 0);
+				this.top    = (y = zoneH < y + height ? zoneH - height : y > 0 ? y : 0);
+				this.right  = zoneW - x - width;
+				this.bottom = zoneH - y - height;
+				this.box.dispatchEvent( new CustomEvent('PasL posChange') );
+			}
 		}
-		const deattach = () => {
-			this.box.dispatchEvent(new CustomEvent('PasL endAction'));
-			window.removeEventListener(_PointHandler.MOVE, attach);
-			window.removeEventListener(_PointHandler.END, deattach);
+		const onEnd = () => {
+			this.box.dispatchEvent( new CustomEvent('PasL endAction') );
+			window.removeEventListener(onScreen.PointMove, onMove);
+			window.removeEventListener(onScreen.PointUP, onEnd);
 		}
-		this.box.dispatchEvent(new CustomEvent('PasL startAction'));
-		window.addEventListener(_PointHandler.MOVE, attach);
-		window.addEventListener(_PointHandler.END, deattach);
+		this.box.dispatchEvent( new CustomEvent('PasL startAction') );
+		window.addEventListener(onScreen.PointMove, onMove);
+		window.addEventListener(onScreen.PointUP, onEnd);
 	}
 
 	addListener(name, callback) {
@@ -221,17 +217,30 @@ class PasL {
 };
 
 // an interlayer between touch devices and a mouse.
-const _PointHandler = 'ontouchstart' in window ? {
-	START : 'touchstart',
-	MOVE  : 'touchmove' ,
-	END   : 'touchend'  ,
-	getPos: ({ touches, changedTouches: [o] }) => (touches.length === 1 ? o : null)
-		} : {
-	START : 'mousedown',
-	MOVE  : 'mousemove',
-	END   : 'mouseup'  ,
-	getPos: o => (o.button === 0 ? o : null)
+const onScreen = {
+	Change: 'onorientationchange' in window ? 'orientationchange' : 'resize',
+	PointDown: 'onpointerdown' in window ? 'pointerdown' : 'mousedown',
+	PointMove: 'onpointerdown' in window ? 'pointermove' : 'mousemove',
+	PointUP  : 'onpointerdown' in window ? 'pointerup'   : 'mouseup',
+
+	getPoint2D: o => (o.button <= 0 ? {
+		x: o.clientX, y: o.clientY
+	} : null)
 };
+
+if ('ontouchstart' in window) {
+
+	onScreen.PointDown  = 'touchstart';
+	onScreen.PointMove  = 'touchmove';
+	onScreen.PointUP    = 'touchend';
+
+	onScreen.getPoint2D = ({ touches: [a,b] }) => (a ? {
+		x: a.clientX, y: a.clientY, dist: (b ? Math.sqrt(
+			(a.clientX - b.clientX) * (a.clientX - b.clientX) +
+			(a.clientY - b.clientY) * (a.clientY - b.clientY)
+		) : 0)
+	} : null);
+}
 
 // simple utility for create/change DOM elements
 function _setup(el, attrs, events) {
