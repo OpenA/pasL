@@ -29,7 +29,7 @@ class PasL {
 			    _Center = _setup('div', { class: 'pasL-col-sect' });
 			// the select "box" contains:
 			// three vertical blocks (left and right is darked, central - transparent)
-			box    .append( _Left, _Center, _Right );
+			box.append( _Left, _Center, _Right );
 			// center vertical block contains three horisontal blocks (top and botom is darked, central - transparent)
 			_Center.append( _Top , srect, _Bottom );
 			// center horisontal block (selection block) has four absolute position corners
@@ -137,7 +137,6 @@ class PasL {
 	handleEvent(e) { // mouse/touch move handler
 
 		const start = onScreen.getPoint2D(e);
-
 		if ( !start )
 			return;
 		e.preventDefault();
@@ -159,8 +158,8 @@ class PasL {
 			} else {
 				rX = p === 'l', rY = a === 't';
 			}
-			let x = rX ? this.right : left;
-			let y = rY ? this.bottom : top;
+			let x = !rX ? left : this.right; // zoneW - left - width
+			let y = !rY ? top  : this.bottom; // zoneH - top - height
 
 			var onMove = e => {
 
@@ -180,6 +179,25 @@ class PasL {
 					this[rY ? 'top' : 'bottom'] = zoneH - y - h;
 				}
 				this.box.dispatchEvent( new CustomEvent('PasL sizeChange') );
+			}
+		} else if (start.dist >= 0) {
+
+			var onMove = e => {
+
+				let { x, y, dist } = onScreen.getPoint2D(e);
+				let w = width, h = height;
+				x = x - start.x + left,
+				y = y - start.y + top;
+				if (dist > 0) {
+					dist /= start.dist, w *= dist, h *= dist;
+					this.width  = (w = zoneW < w ? zoneW : w);
+					this.height = (h = zoneH < h ? zoneH : h);
+				}
+				this.left = (x = zoneW < x + w ? zoneW - w : x > 0 ? x : 0);
+				this.top  = (y = zoneH < y + h ? zoneH - h : y > 0 ? y : 0);
+				this.right = zoneW - x - w;
+				this.bottom = zoneH - y - h;
+				this.box.dispatchEvent( new CustomEvent('PasL posChange') );
 			}
 		} else {
 			var onMove = e => {
