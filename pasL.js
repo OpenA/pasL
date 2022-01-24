@@ -173,10 +173,12 @@ class PasL extends PointTracker {
 		    srect = _setup('div', { class: 'pasL-srect' });
 
 		let _x1 = 0, _y1 = 0, _w = 0, _h = 0, _x2 = 0, _y2 = 0;
+		let _fc = 'transparent';
 
 		let left = { get: () => _x1 },    top = { get: () => _y1 },
 		   right = { get: () => _x2 }, bottom = { get: () => _y2 },
-		   width = { get: () => _w  }, height = { get: () => _h  };
+		   width = { get: () => _w  }, height = { get: () => _h  },
+		   fill  = { get: () => _fc, set: c => { _fc = c } };
 
 		width.set  = i => { srect.style.width  = `${_w = i}px`; }
 		height.set = i => { srect.style.height = `${_h = i}px`; }
@@ -203,9 +205,11 @@ class PasL extends PointTracker {
 			box.append(srect);
 			box.style.maxWidth = 0;
 			box.style.maxHeight = 0;
-			srect.style.backgroundColor = 'white';
+			// if wee use input[type="color"], only hex color codes is supported
+			srect.style.backgroundColor = _fc = '#ffffff';
 			srect.style.borderRadius = (figure === 2 ? '100%' : null);
 
+			fill  .set = c => { srect.style.backgroundColor = _fc = c; };
 			left  .set = i => { srect.style.left = `${_x1 = i}px`; };
 			top   .set = i => { srect.style.top  = `${_y1 = i}px`; };
 			right .set = i => { `${_x2 = i}px`; };
@@ -232,7 +236,7 @@ class PasL extends PointTracker {
 			zoneW: {  writable: true, value: 0 },
 			zoneH: {  writable: true, value: 0 },
 
-			left, top, right, bottom, width, height
+			left, top, right, bottom, width, height, fill
 		});
 	}
 
