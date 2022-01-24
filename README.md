@@ -2,7 +2,7 @@
 #### Simple and fast Javascript library for image area selection
 
 ###### how its look like:
-<img width="500" src="https://user-images.githubusercontent.com/265758/150781697-cd0e029e-6f02-4dd4-a2ec-85ade4d921cf.jpg" alt="how its look like">
+<img width="620" src="https://user-images.githubusercontent.com/265758/150781697-cd0e029e-6f02-4dd4-a2ec-85ade4d921cf.jpg" alt="how its look like">
 
 just show source code of this example:
 ```javascript
