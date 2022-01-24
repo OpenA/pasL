@@ -1,5 +1,7 @@
 /* === pasL elements style === */
-
+.pasL-box {
+	user-select: none;
+}
 .pasL-col-sect {
 	height: 100%;
 	display: inline-block;
