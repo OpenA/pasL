@@ -328,8 +328,11 @@ class PasL extends PointTracker {
 		}
 		data.t = top, data.h = height, data.lock = lock,
 		data.l = left, data.w = width, data.flag = flag;
-		if (is_init)
-			this.box.dispatchEvent( new CustomEvent(PasL.onStartEvent) );
+		if (is_init) {
+			this.box.dispatchEvent(
+				new CustomEvent(PasL.onStartEvent, { bubbles: true })
+			);
+		}
 	}
 	_emitChange(points, data) {
 
@@ -367,11 +370,13 @@ class PasL extends PointTracker {
 			}
 		}
 		this.box.dispatchEvent(
-			new CustomEvent(PasL.onChangeEvent)
+			new CustomEvent(PasL.onChangeEvent, { bubbles: true })
 		);
 	 }
 	_emitRelease() {
-		this.box.dispatchEvent( new CustomEvent(PasL.onEndEvent) );
+		this.box.dispatchEvent(
+			new CustomEvent(PasL.onEndEvent, { bubbles: true })
+		);
 	}
 };
 
