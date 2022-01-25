@@ -2,7 +2,7 @@
 
 // an interlayer between touch devices and a mouse.
 const winHasMouse       = ('onmousedown'         in window);
-const winHasTouch       = ('ontouchstart'        in window);
+const winHasMultiTouch  = ('ontouchstart'        in window);
 const winHasPointer     = ('onpointerdown'       in window);
 const winHasOrientation = ('onorientationchange' in window);
 
@@ -12,40 +12,42 @@ class PointTracker {
 
 		const { elem = null, bubbles = true } = opts;
 
-		this.max_points = 2;
 		this.bubbles = bubbles;
-		this.debug = false;
+		//this.debug = false;
 
 		if (elem instanceof Element) {
-			if (winHasTouch) {
-				this._trackTouch(elem);
+			if (winHasMultiTouch) {
+				this.trackMultiPoints(elem);
 			} else {
-				this._trackPointer(elem);
+				this.trackPoint(elem);
 			}
 		}
 	}
 
-	/** fired after 1 or more points active on element
-	 * * 0: @Object - global (for pass params between other methods)
-	 * * 1: @Event  - event
+	/** fired if 1 or more points still active on element
+	 * * 0: @Array  - list of points positions
+	 * * 1: @Object - user (for pass params between other methods)
+	 * * 2: @Event  - event
 	*/
-	_emitStart() {}
+	_emitActive() {}
 
 	/** fired if points change his position
-	 * * 0: @Object - local
+	 * * 0: @Array  - list of points offsets
+	 * * 1: @Object - user (for pass params between other methods)
 	 * * 2: @Event  - event
 	*/
-	_emitMove() {}
+	_emitChange() {}
 
 	/** fired if all points removed or canceled
-	 * * 0: @Object - local
+	 * * 0: @Array  - list of last points positions
+	 * * 1: @Object - user (finish)
 	 * * 2: @Event  - event
 	*/
-	_emitEnd() {}
+	_emitRelease() {}
 
-	_trackPointer(elem) {
+	trackPoint(elem, use_p = true) {
 
-		const type = winHasPointer ? 'pointer' : 'mouse';
+		const type = use_p && winHasPointer ? 'pointer' : 'mouse';
 
 		const onStart = s => {
 
@@ -57,28 +59,28 @@ class PointTracker {
 				s.stopPropagation();
 			s.preventDefault();
 
-			const init = {
-				el: s.target,
-				x: s.clientX,
-				y: s.clientY
-			};
-			this._emitStart(init, s);
+			const init = Object.create(null),
+			       usr = new Object;
+			init.el    = s.target;
+			init.x     = s.clientX;
+			init.y     = s.clientY;
+			this._emitActive([init], usr, s);
 
 			const onMove = m => {
-				let mov = Object.assign({}, init);
-				 mov.el = m.target;
-				 mov.x  = m.clientX - init.x;
-				 mov.y  = m.clientY - init.y;
+				let mov  = Object.create(null);
+				mov.el   = m.target;
+				mov.x    = m.clientX - init.x;
+				mov.y    = m.clientY - init.y;
 				m.preventDefault();
-				this._emitMove(mov, m);
+				this._emitChange([mov], usr, m);
 			}, onEnd = e => {
-				let end = Object.assign({}, init);
-				 end.el = e.target;
-				 end.x  = e.clientX - init.x;
-				 end.y  = e.clientY - init.y;
+				let end  = Object.create(null);
+				end.el   = e.target;
+				end.x    = e.clientX;
+				end.y    = e.clientY;
 				window.removeEventListener(`${type}move`, onMove);
 				window.removeEventListener(`${type}up`, onEnd);
-				this._emitEnd(end, e);
+				this._emitRelease([end], usr, e);
 			};
 			window.addEventListener(`${type}move`, onMove);
 			window.addEventListener(`${type}up`, onEnd);
@@ -86,56 +88,50 @@ class PointTracker {
 		elem.addEventListener(`${type}down`, onStart);
 	}
 
-	_trackTouch(elem) {
+	trackMultiPoints(elem) {
 
-		let init = null;
-		let start_x = 0, start_y = 0;
+		let init = null, usr = null;
 
 		const onTouch = e => {
 
 			if (!this.bubbles)
 				e.stopPropagation();
-			if (this.debug)
-				this._emitDebug(e);
+			//if (this.debug)
+			//	this._emitDebug(e);
 
-			const c  = e.type.charAt('touch'.length),
-			   touch = e.touches, len = touch.length,
-			   cange = e.changedTouches, cl = cange.length;
+			const c = e.type.charAt('touch'.length),
+			    len = e.touches.length,
+			  touch = len ?  e.touches : e.changedTouches,
+			   pcnt = len || e.changedTouches.length,
+			 points = new Array(pcnt);
 
-			let max_x = 0, max_y = 0;
-
-			for (let {clientX:x, clientY:y} of touch) {
-				max_x = max_x < x ? x : max_x;
-				max_y = max_y < y ? y : max_y;
+			for (let i = 0; i < pcnt; i++) {
+				let p = (points[i] = Object.create(null));
+				   p.el = touch[i].target;
+				   p.x  = touch[i].clientX;
+				   p.y  = touch[i].clientY;
 			}
-			const exp = Object.assign({}, init);
-			   exp.el = e.target;
-
 			switch(c) {
 			case 'm': // ~ move
-				exp.x = max_x - start_x,
-				exp.y = max_y - start_y;
-				this._emitMove(exp, e);
+				for (let i = 0; i < len; i++) {
+					points[i].x -= init[i].x;
+					points[i].y -= init[i].y;
+				}
+				this._emitChange(points, usr, e);
 				break;
 			case 's': // ~ start
 				e.preventDefault();
-				if(!init)
-					init = exp;
+				if (usr === null)
+					usr = new Object;
 			case 'e': // ~ end
 				if (len) {
 					// user switch fingers
-					if (c === 's' || len === 1) {
-						init.el = e.target;
-						init.x = start_x = max_x;
-						init.y = start_y = max_y;
-						this._emitStart(init, e);
-					}
+					this._emitActive((init = points), usr, e);
 					break;
 				}
 			default: // ~ cancel
-				init = null;
-				start_x = start_y = 0;
-				this._emitEnd(exp, e);
+				let end = usr; init = usr = null;
+				this._emitRelease(points, end, e);
 			}
 		}
 		elem.addEventListener('touchstart' , onTouch);
@@ -144,7 +140,7 @@ class PointTracker {
 		elem.addEventListener('touchcancel', onTouch);
 	}
 
-	_emitDebug(e) {
+	/*_emitDebug(e) {
 		const el = document.getElementById('myDebug') || document.body.appendChild(
 			_setup('span', { id: 'myDebug', style:
 			'color: black; right: 0; top: 0; position: fixed; background: white; z-index: 9999;'
@@ -153,9 +149,9 @@ class PointTracker {
 		for (let o of (e.touches || []))
 			text += '\nt_x:'+ o.clientX+'\nt_y:'+ o.clientY;
 		for (let o of (e.changedTouches || []))
-			text += '\nc_x:'+ o.clientX+'\nc_y:'+ o.clientY;/**/
+			text += '\nc_x:'+ o.clientX+'\nc_y:'+ o.clientY;
 		el.textContent = label +'\n'+ text;
-	}
+	}*/
 }
 
 class PasL extends PointTracker {
@@ -301,81 +297,87 @@ class PasL extends PointTracker {
 		]
 	}
 
-	_emitStart(init) {
+	_emitActive(points, data) {
 
-		let rex = 0x0, rey = 0x0, cew = 0x0, ceh = 0x0;
-
-		const [ name, type ] = init.el.classList;
 		const { left, top, width, height, lock } = this;
 
-		if (name === 'pasL-rcons') {
+		let flag = 0x00000000, k = 0, is_init = Object.hasOwnProperty('flag');
 
-			const p = type.charAt(0), a = type.charAt(2);
+		for (const point of points) {
 
-			if (p === 'c') {
-				rex = ((lock && a === 't') || a === 'l') << 1;
-				rey = ((lock && a === 'l') || a === 't') << 2;
-				cew = ( lock || a === 'l'  || a === 'r') << 3;
-				ceh = ( lock || a === 't'  || a === 'b') << 4;
-			} else {
-				rex = (p === 'l') << 1, cew = 0x8;
-				rey = (a === 't') << 2, ceh = 0x10;
+			let rex = 0x0, rey = 0x0, cew = 0x0, ceh = 0x0;
+
+			const [ name, type ] = point.el.classList;
+
+			if (name === 'pasL-rcons') {
+
+				const p = type.charAt(0), a = type.charAt(2);
+
+				if (p === 'c') {
+					rex = ((lock && a === 't') || a === 'l');
+					rey = ((lock && a === 'l') || a === 't');
+					cew = ( lock || a === 'l'  || a === 'r');
+					ceh = ( lock || a === 't'  || a === 'b');
+				} else {
+					rex = (p === 'l'), cew = true;
+					rey = (a === 't'), ceh = true;
+				}
 			}
+			flag |= (rex << (k + 0)) | (cew << (k + 2)) |
+			        (rey << (k + 1)) | (ceh << (k + 3)), k += 4;
 		}
-		init.t = top; init.h = height;
-		init.l = left; init.w = width;
-		init.f = !!lock | rex | rey | cew | ceh;
-		this.box.dispatchEvent( new CustomEvent('PasL startAction') );
+		data.t = top, data.h = height, data.lock = lock,
+		data.l = left, data.w = width, data.flag = flag;
+		if (is_init)
+			this.box.dispatchEvent( new CustomEvent(PasL.onStartEvent) );
 	}
-	_emitMove({ x, y, t, l, w, h, f }) {
+	_emitChange(points, data) {
 
 		const { zoneW, zoneH } = this;
+		let { t, l, w, h, flag, lock } = data;
 
-		const rex = f & 0x2, cew = f & 0x8,
-		      rey = f & 0x4, ceh = f & 0x10,
-		     lock = f & 0x1;
+		for (let { x, y } of points) {
+			const rex = flag & 0x1, cew = flag & 0x4,
+			      rey = flag & 0x2, ceh = flag & 0x8;
 
-		if (cew || ceh) {
-			let _1 = rex ? zoneW - l - w : l;
-			let _2 = rey ? zoneH - t - h : t;
+			flag >>= 4;
+			if (cew || ceh) {
+				let _1 = rex ? zoneW - l - w : l;
+				let _2 = rey ? zoneH - t - h : t;
 
-			w += (rex ? -x : x);
-			h += (rey ? -y : y);
+				w += (rex ? -x : x);
+				h += (rey ? -y : y);
 
-			if (lock)
-				w = h = (w < h ? h : w);
-			 if (cew) {
-				this.width = (w = zoneW - _1 < w ? zoneW - _1 : w < 0 ? 0 : w);
-				this[rex ? 'left' : 'right'] = zoneW - _1 - w;
-			 }
-			 if (ceh) {
-				this.height = (h = zoneH - _2 < h ? zoneH - _2 : h < 0 ? 0 : h);
-				this[rey ? 'top' : 'bottom'] = zoneH - _2 - h;
-			 }
-		} else {
-			l += x, t += y;
-			this.left = (l = zoneW - w < l ? zoneW - w : l < 0 ? 0 : l);
-			this.top  = (t = zoneH - h < t ? zoneH - h : t < 0 ? 0 : t);
-			this.right  = zoneW - l - w;
-			this.bottom = zoneH - t - h;
+				if (lock)
+					w = h = (w < h ? h : w);
+				 if (cew) {
+					this.width = (w = zoneW - _1 < w ? zoneW - _1 : w < 0 ? 0 : w);
+					this[rex ? 'left' : 'right'] = zoneW - _1 - w;
+				 }
+				 if (ceh) {
+					this.height = (h = zoneH - _2 < h ? zoneH - _2 : h < 0 ? 0 : h);
+					this[rey ? 'top' : 'bottom'] = zoneH - _2 - h;
+				 }
+			} else {
+				l += x, t += y;
+				this.left = (l = zoneW - w < l ? zoneW - w : l < 0 ? 0 : l);
+				this.top  = (t = zoneH - h < t ? zoneH - h : t < 0 ? 0 : t);
+				this.right  = zoneW - l - w;
+				this.bottom = zoneH - t - h;
+			}
 		}
 		this.box.dispatchEvent(
-			new CustomEvent(`PasL ${cew || ceh ? 'size' : 'pos'}Change`)
+			new CustomEvent(PasL.onChangeEvent)
 		);
 	 }
-	_emitEnd() {
-		this.box.dispatchEvent( new CustomEvent('PasL endAction') );
-	}
-
-	addListener(name, callback) {
-		if (typeof callback === 'function' && ['startAction', 'posChange', 'sizeChange', 'endAction'].includes(name))
-			this.box.addEventListener(`PasL ${name}`, callback);
-	}
-	removeListener(name, callback) {
-		if (typeof callback === 'function' && ['startAction', 'posChange', 'sizeChange', 'endAction'].includes(name))
-			this.box.removeEventListener(`PasL ${name}`, callback);
+	_emitRelease() {
+		this.box.dispatchEvent( new CustomEvent(PasL.onEndEvent) );
 	}
 };
+
+PasL.onStartEvent  = 'PasL start';
+PasL.onChangeEvent = 'PasL change';
+PasL.onEndEvent    = 'PasL end';
 
 const getPoint2D = ([a,b]) => Math.sqrt(
 	(a.clientX - b.clientX) * (a.clientX - b.clientX) +
