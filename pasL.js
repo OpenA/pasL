@@ -301,7 +301,7 @@ class PasL extends PointTracker {
 
 		const { left, top, width, height, lock } = this;
 
-		let flag = 0x00000000, k = 0, is_init = Object.hasOwnProperty('flag');
+		let flag = 0x00000000, k = 0, is_init = data.hasOwnProperty('flag');
 
 		for (const point of points) {
 
