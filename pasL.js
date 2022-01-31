@@ -169,12 +169,13 @@ class PasL extends PointTracker {
 		    srect = _setup('div', { class: 'pasL-srect' });
 
 		let _x1 = 0, _y1 = 0, _w = 0, _h = 0, _x2 = 0, _y2 = 0;
-		let _fc = 'transparent';
+		let zone_w = 0, zone_h = 0;
 
 		let left = { get: () => _x1 },    top = { get: () => _y1 },
 		   right = { get: () => _x2 }, bottom = { get: () => _y2 },
 		   width = { get: () => _w  }, height = { get: () => _h  },
-		   fill  = { get: () => _fc, set: c => { _fc = c } };
+		   zoneW = { get: () => zone_w, set: w => { box.style.width  = `${ zone_w = w }px`; }},
+		   zoneH = { get: () => zone_h, set: h => { box.style.height = `${ zone_h = h }px`; }};
 
 		width.set  = i => { srect.style.width  = `${_w = i}px`; }
 		height.set = i => { srect.style.height = `${_h = i}px`; }
@@ -202,10 +203,9 @@ class PasL extends PointTracker {
 			box.style.maxWidth = 0;
 			box.style.maxHeight = 0;
 			// if wee use input[type="color"], only hex color codes is supported
-			srect.style.backgroundColor = _fc = '#ffffff';
+			srect.style.backgroundColor = '#ffffff';
 			srect.style.borderRadius = (figure === 2 ? '100%' : null);
 
-			fill  .set = c => { srect.style.backgroundColor = _fc = c; };
 			left  .set = i => { srect.style.left = `${_x1 = i}px`; };
 			top   .set = i => { srect.style.top  = `${_y1 = i}px`; };
 			right .set = i => { `${_x2 = i}px`; };
@@ -228,11 +228,11 @@ class PasL extends PointTracker {
 		Object.defineProperties(this, {
 			/* public */
 			box : { enumerable: true, value: box  },
-			lock:  {  writable: true, value: lock },
-			zoneW: {  writable: true, value: 0 },
-			zoneH: {  writable: true, value: 0 },
+			lock: {   writable: true, value: lock },
 
-			left, top, right, bottom, width, height, fill
+			zoneW, zoneH,
+
+			left, top, right, bottom, width, height
 		});
 	}
 
@@ -264,11 +264,20 @@ class PasL extends PointTracker {
 			this[re ? 'top' : 'bottom'] = zoneH - y - h;
 		}
 	}
-	// this is a general function for apply selection area on the image
-	setZone(zW, zH, x = 0, y = 0, w = 0, h = 0) { // x, y, w, h  arguments is optional and set the start selection position
+	updZone({ width:cW, height:cH }) {
+		let rw = cW / this.zoneW, rh = cH / this.zoneH,
 
-		this.box.style.width  = `${ this.zoneW = zW }px`;
-		this.box.style.height = `${ this.zoneH = zH }px`;
+		x = Math.round(rw * this.left), w = Math.round(rw * this.width),
+		y = Math.round(rh * this.top),  h = Math.round(rh * this.height);
+
+		this.zoneW = cW, this.zoneH = cH;
+		this.left = x, this.width = w, this.right = cW - x - w;
+		this.top = y, this.height = h, this.bottom = cH - y - h;
+	}
+	// this is a general function for apply selection area on the image
+	setZone({ width:zW, height:zH }, x = 0, y = 0, w = 0, h = 0) { // x, y, w, h  arguments is optional and set the start selection position
+
+		this.zoneW = zW, this.zoneH = zH;
 
 		if (!(w > 0) || !(h > 0)) {
 			x = 0, w = zW, y = 0, h = zH;
