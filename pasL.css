@@ -2,11 +2,11 @@
 .pasL-box {
 	user-select: none;
 }
-.pasL-col-sect {
+.pasL-col {
 	height: 100%;
 	display: inline-block;
 }
-.pasL-row-sect {
+.pasL-row {
 	width: 100%;
 	display: block;
 }
@@ -18,7 +18,7 @@
 	border: 1px solid rgba(0,0,0,.6);
 	position: absolute;
 }
-.pasL-srect {
+.pasL-select {
 	position: relative;
 	cursor: move;
 }

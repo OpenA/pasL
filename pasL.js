@@ -159,68 +159,40 @@ class PasL extends PointTracker {
 	/** 
 	 * **lock**: `true | 0x2` locked aspect of selection block.
 	 * * second bit flag render clickable button for lock/unlock
-	 * @figure `0...2` 0: selection, 1: rectanle, 2: circle
-	 * @edgies `false` add active flat edges.
+	 * 
+	 * **edgies**: `true` add active flat edges.
 	 */
 	constructor(opts = {}) {
 
-		const { lock = false, figure = 0, edgies = false } = opts;
+		const { lock = false, edgies = false } = opts;
 
-		const box = _setup('div', { class: 'pasL-box', style: 'position: absolute;'}),
-		    srect = _setup('div', { class: 'pasL-srect' });
+		const _Box = _setup('div', { class: 'pasL-box', style: 'position: absolute;'}),
+		   _Select = _setup('div', { class: 'pasL-select' }),
+		   _Top    = _setup('div', { class: 'pasL-row pasL-dark' }),
+		   _Right  = _setup('div', { class: 'pasL-col pasL-dark' }),
+		   _Left   = _setup('div', { class: 'pasL-col pasL-dark' }),
+		   _Bottom = _setup('div', { class: 'pasL-row pasL-dark' }),
+		   _Center = _setup('div', { class: 'pasL-col' });
 
 		let _x1 = 0, _y1 = 0, _w = 0, _h = 0, _x2 = 0, _y2 = 0;
-		let zone_w = 0, zone_h = 0;
+		let _zw = 0, _zh = 0, locked = {};
 
-		let left = { get: () => _x1 },    top = { get: () => _y1 },
-		   right = { get: () => _x2 }, bottom = { get: () => _y2 },
-		   width = { get: () => _w  }, height = { get: () => _h  },
-		  locked = {},
-		   zoneW = { get: () => zone_w, set: w => { box.style.width  = `${ zone_w = w }px`; }},
-		   zoneH = { get: () => zone_h, set: h => { box.style.height = `${ zone_h = h }px`; }};
+		super({ elem: _Select });
 
-		width.set  = i => { srect.style.width  = `${_w = i}px`; }
-		height.set = i => { srect.style.height = `${_h = i}px`; }
-
-		super({ elem: srect });
-
-		if (figure === 0) {
-			let _Top    = _setup('div', { class: 'pasL-row-sect pasL-dark' }),
-			    _Right  = _setup('div', { class: 'pasL-col-sect pasL-dark' }),
-			    _Left   = _setup('div', { class: 'pasL-col-sect pasL-dark' }),
-			    _Bottom = _setup('div', { class: 'pasL-row-sect pasL-dark' }),
-			    _Center = _setup('div', { class: 'pasL-col-sect' });
-			// the select "box" contains:
-			// three vertical blocks (left and right is darked, central - transparent)
-			box.append( _Left, _Center, _Right );
-			// center vertical block contains three horisontal blocks (top and botom is darked, central - transparent)
-			_Center.append( _Top , srect, _Bottom );
-			// center horisontal block (selection block) has four absolute position corners
-			left  .set = i => { _Left  .style.width  = `${_x1 = i}px`; };
-			top   .set = i => { _Top   .style.height = `${_y1 = i}px`; };
-			right .set = i => { _Right .style.width  = `${_x2 = i}px`; };
-			bottom.set = i => { _Bottom.style.height = `${_y2 = i}px`; };
-		} else {
-			box.append(srect);
-			box.style.maxWidth = 0;
-			box.style.maxHeight = 0;
-			// if wee use input[type="color"], only hex color codes is supported
-			srect.style.backgroundColor = '#ffffff';
-			srect.style.borderRadius = (figure === 2 ? '100%' : null);
-
-			left  .set = i => { srect.style.left = `${_x1 = i}px`; };
-			top   .set = i => { srect.style.top  = `${_y1 = i}px`; };
-			right .set = i => { `${_x2 = i}px`; };
-			bottom.set = i => { `${_y2 = i}px`; };
-		}
-		srect.append(
+		// the select "box" contains:
+		// three vertical blocks (left and right is darked, central - transparent)
+		_Box.append( _Left, _Center, _Right );
+		// center vertical block contains three horisontal blocks (top and botom is darked, central - transparent)
+		_Center.append( _Top , _Select, _Bottom );
+		// center horisontal block (selection block) has four absolute position corners
+		_Select.append(
 			_setup('div', { class: 'pasL-rcons l-t' }),
 			_setup('div', { class: 'pasL-rcons r-t' }),
 			_setup('div', { class: 'pasL-rcons l-b' }),
 			_setup('div', { class: 'pasL-rcons r-b' })
 		);
 		if (edgies) { // and optional for active edges
-			srect.prepend(
+			_Select.prepend(
 				_setup('div', { class: 'pasL-rcons c-l' }),
 				_setup('div', { class: 'pasL-rcons c-t' }),
 				_setup('div', { class: 'pasL-rcons c-r' }),
@@ -230,13 +202,13 @@ class PasL extends PointTracker {
 		if (lock & 0x2) {
 			const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'),
 			     path = document.createElementNS('http://www.w3.org/2000/svg', 'path'),
-				 rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+			     rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
 
 			svg.append(
 				_setup(path, { d: 'M 15,20.5 C 15,20.5 13,7 22,7 31,7 29,20.5 29,20.5', fill: 'none', 'stroke-width': 3 }),
 				_setup(rect, { width:25, height:16, x:9.5, y:20, rx:1.5, ry:8 })
 			);
-			srect.append(
+			_Select.append(
 				_setup(svg, { class: 'pasL-lock'+ (lock & 0x1 ? ' locked' : ''), viewBox: '0 0 43 43' }, {
 					click: e => {
 						e.stopPropagation();
@@ -251,11 +223,18 @@ class PasL extends PointTracker {
 		}
 		Object.defineProperties(this, {
 			/* public */
-			box : { enumerable: true, value: box  },
+			box : { enumerable: true, value: _Box },
 
-			zoneW, zoneH, locked,
+			locked,
 
-			left, top, right, bottom, width, height
+		   zoneW: { set: i => { _Box   .style.width  = `${_zw = i}px`; }, get: () =>_zw },
+		   zoneH: { set: i => { _Box   .style.height = `${_zh = i}px`; }, get: () =>_zh },
+		    left: { set: i => { _Left  .style.width  = `${_x1 = i}px`; }, get: () =>_x1 },
+		     top: { set: i => { _Top   .style.height = `${_y1 = i}px`; }, get: () =>_y1 },
+		   right: { set: i => { _Right .style.width  = `${_x2 = i}px`; }, get: () =>_x2 },
+		  bottom: { set: i => { _Bottom.style.height = `${_y2 = i}px`; }, get: () =>_y2 },
+		   width: { set: i => { _Select.style.width  = `${ _w = i}px`; }, get: () =>_w  },
+		  height: { set: i => { _Select.style.height = `${ _h = i}px`; }, get: () =>_h  }
 		});
 	}
 
