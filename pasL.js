@@ -157,7 +157,8 @@ class PointTracker {
 class PasL extends PointTracker {
 
 	/** 
-	 * @lock `false` is just lock aspect of *figure* (ex: selection proportions. You can modify this parameter any time).
+	 * **lock**: `true | 0x2` locked aspect of selection block.
+	 * * second bit flag render clickable button for lock/unlock
 	 * @figure `0...2` 0: selection, 1: rectanle, 2: circle
 	 * @edgies `false` add active flat edges.
 	 */
@@ -174,6 +175,7 @@ class PasL extends PointTracker {
 		let left = { get: () => _x1 },    top = { get: () => _y1 },
 		   right = { get: () => _x2 }, bottom = { get: () => _y2 },
 		   width = { get: () => _w  }, height = { get: () => _h  },
+		  locked = {},
 		   zoneW = { get: () => zone_w, set: w => { box.style.width  = `${ zone_w = w }px`; }},
 		   zoneH = { get: () => zone_h, set: h => { box.style.height = `${ zone_h = h }px`; }};
 
@@ -225,12 +227,33 @@ class PasL extends PointTracker {
 				_setup('div', { class: 'pasL-rcons c-b' })
 			);
 		}
+		if (lock & 0x2) {
+			const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'),
+			     path = document.createElementNS('http://www.w3.org/2000/svg', 'path'),
+				 rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+
+			svg.append(
+				_setup(path, { d: 'M 15,20.5 C 15,20.5 13,7 22,7 31,7 29,20.5 29,20.5', fill: 'none', 'stroke-width': 3 }),
+				_setup(rect, { width:25, height:16, x:9.5, y:20, rx:1.5, ry:8 })
+			);
+			srect.append(
+				_setup(svg, { class: 'pasL-lock'+ (lock & 0x1 ? ' locked' : ''), viewBox: '0 0 43 43' }, {
+					click: e => {
+						e.stopPropagation();
+						svg.classList.toggle('locked');
+					}
+				})
+			);
+			locked.get = () => svg.classList.contains('locked');
+			locked.set =  y => svg.classList[ y ? 'add' : 'remove' ]('locked');
+		} else {
+			locked.value = Boolean(lock);
+		}
 		Object.defineProperties(this, {
 			/* public */
 			box : { enumerable: true, value: box  },
-			lock: {   writable: true, value: lock },
 
-			zoneW, zoneH,
+			zoneW, zoneH, locked,
 
 			left, top, right, bottom, width, height
 		});
@@ -308,7 +331,7 @@ class PasL extends PointTracker {
 
 	_emitActive(points, data) {
 
-		const { left, top, width, height, lock } = this;
+		const { left, top, width, height, locked } = this;
 
 		let flag = 0x00000000, k = 0, is_init = data.hasOwnProperty('flag');
 
@@ -323,10 +346,10 @@ class PasL extends PointTracker {
 				const p = type.charAt(0), a = type.charAt(2);
 
 				if (p === 'c') {
-					rex = ((lock && a === 't') || a === 'l');
-					rey = ((lock && a === 'l') || a === 't');
-					cew = ( lock || a === 'l'  || a === 'r');
-					ceh = ( lock || a === 't'  || a === 'b');
+					rex = ((locked && a === 't') || a === 'l');
+					rey = ((locked && a === 'l') || a === 't');
+					cew = ( locked || a === 'l'  || a === 'r');
+					ceh = ( locked || a === 't'  || a === 'b');
 				} else {
 					rex = (p === 'l'), cew = true;
 					rey = (a === 't'), ceh = true;
@@ -335,7 +358,7 @@ class PasL extends PointTracker {
 			flag |= (rex << (k + 0)) | (cew << (k + 2)) |
 			        (rey << (k + 1)) | (ceh << (k + 3)), k += 4;
 		}
-		data.t = top, data.h = height, data.lock = lock,
+		data.t = top, data.h = height, data.lock = locked,
 		data.l = left, data.w = width, data.flag = flag;
 		if (is_init) {
 			this.box.dispatchEvent(

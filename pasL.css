@@ -22,6 +22,16 @@
 	position: relative;
 	cursor: move;
 }
+.pasL-lock {
+	position: absolute;
+	cursor: pointer;
+	width : 18px; right: -24px;
+	height: 18px; top: 0;
+}
+.pasL-lock > path { stroke: #cdef10; transform: translate(-6px); }
+.pasL-lock > rect { fill  : #cdef10; transform: translate( 6px); }
+   .locked > path { stroke: #ef1010; transform: translate(0); }
+   .locked > rect { fill  : #ef1010; transform: translate(0); }
 
 .pasL-rcons.l-t, .pasL-rcons.r-t, .pasL-rcons.l-b, .pasL-rcons.r-b {
 	padding: 4px;
