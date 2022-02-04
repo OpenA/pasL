@@ -3,21 +3,35 @@ class TowL extends PointTracker {
 
 	constructor() {
 
-		const _Box = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-		      _Box.setAttribute('xmlns','http://www.w3.org/2000/svg');
+		const _Box = _setup('div', { class: 'towL-box', style: 'position: absolute;' }),
+		      _Svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+		
+		_Svg.setAttribute('xmlns' ,'http://www.w3.org/2000/svg');
+		_Svg.setAttribute('fill'  , 'white');
+		_Svg.setAttribute('stroke', 'black');
+
+		_Box.append(_Svg);
 
 		super({ elem: _Box });
 
 		Object.defineProperties(this, {
 			/* public */
-			box : { enumerable: true, value: _Box }
+			box : { enumerable: true, value: _Box },
+			svg : { enumerable: true, value: _Svg }
 		});
 
 	}
 	setViewBox(w, h) {
-		this.box.setAttribute('width' , w)
-		this.box.setAttribute('height', h)
-		this.box.setAttribute('viewBox', `0 0 ${w} ${h}`);
+		this.svg.setAttribute('width' , w)
+		this.svg.setAttribute('height', h)
+		this.svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+	}
+
+	toSource(blob = false) {
+		const svgxml = this.svg.outerHTML;
+		if (blob)
+			return new Blob([svgxml], { type: 'image/svg+xml;charset=utf-8' });
+		return svgxml;
 	}
 
 	/**
@@ -36,14 +50,13 @@ class TowL extends PointTracker {
 		     no_attrs = !(svg_attrs && Object.keys(svg_attrs).length);
 
 		const figure = document.createElementNS('http://www.w3.org/2000/svg', (is_elips ? 'ellipse' : name));
-		const attrs  = { fill: '#fff', stroke: '#000' };
+		const attrs  = {};
 
 		if (no_attrs) {
 			attrs['stroke-width'] = is_line || is_path ? 3 : 1;
 		} else {
 			Object.assign(attrs, svg_attrs);
 		}
-
 		if (is_elips || is_circ) {
 			let rx = w * .5, ry = h * .5;
 
@@ -55,11 +68,18 @@ class TowL extends PointTracker {
 				attrs.ry = ry;
 			} else
 				attrs.r  = rx;
-		} else if (is_line) {
-			attrs.x1 = x, attrs.x2 = x + w;
-			attrs.y1 = y, attrs.y2 = y;
-		} else if (is_path) {
-			attrs.d = `M ${x},${y} ${w+x},${y}`;
+		} else if (is_path || is_line) {
+			let o,sw = attrs['stroke-width'];
+			if (!(sw > 0)) {
+				o = 1.5, attrs['stroke-width'] = 3;
+			} else {
+				o = sw * .5;
+			}
+			if (is_line) {
+				attrs.x1 = x, attrs.x2 = x + w;
+				attrs.y1 =    attrs.y2 = y + o;
+			} else
+				attrs.d = `M ${x},${y+o} ${w+x},${y+o}`;
 		} else {
 
 			attrs.x = x, attrs.y = y;
@@ -80,24 +100,24 @@ class TowL extends PointTracker {
 		for (let key in attrs)
 			figure.setAttribute(key, attrs[key]);
 
-		this.box.append(figure);
+		this.svg.append(figure);
 	}
 
 	_emitActive(points, data) {
 
-		const { box } = this;
+		const { svg } = this;
 		const { el }  = points[0];
-		const { selected } = box.children;
+		const { selected } = svg.children;
+		let type = el.nodeName;
 
-		data.vboxW = box.viewBox.baseVal.width;
-		data.vboxH = box.viewBox.baseVal.height;
+		data.vboxW = svg.viewBox.baseVal.width;
+		data.vboxH = svg.viewBox.baseVal.height;
 
 		if (selected)
 			selected.removeAttribute('id');
-		if (el !== box) {
-			let type = el.nodeName;
+		if (type in TowL) {
 			data[0] = TowL[type](el);
-			box.appendChild(el).id = 'selected';
+			svg.appendChild(el).id = 'selected';
 		}
 	}
 	_emitChange(points, data) {
