@@ -1,5 +1,5 @@
 /* === pasL elements style === */
-.pasL-box {
+.pasL-box, .towL-box {
 	user-select: none;
 }
 .pasL-col {
@@ -77,6 +77,33 @@
 	border-bottom: 2px dashed;
 	cursor: s-resize;
 } /* = = = = = = = = */
+
+
+/* === towL elements style === */
+.towL-select.act-v {
+	border: 1px dashed black;
+}
+.towL-text.act-v {
+	border: 1px dotted white;
+	outline: dotted 1px black;
+}
+.towL-select:not(.act-v) * {
+	display: none;
+}
+.towL-point {
+	background-color: whitesmoke;
+	border: 1px solid black;
+	border-radius: 100%;
+	position: absolute;
+	padding: 4px;
+}
+.towL-point.s-d {
+	top: -4px; left: -4px;
+}
+.towL-point.e-d {
+	top: -4px; right: -4px;
+} /* = = = = = = = = */
+
 
 @media only screen and (-webkit-min-device-pixel-ratio: 2), 
        only screen and (min-device-pixel-ratio: 2) {
