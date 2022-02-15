@@ -312,30 +312,15 @@ class PasL extends PointTracker {
 
 		const { left, top, width, height, locked } = this;
 
-		let flag = 0x00000000, k = 0, is_init = data.hasOwnProperty('flag');
+		let flag = 0x00000000, is_init = data.hasOwnProperty('flag');
 
-		for (const point of points) {
+		for (let i = 0, k = 0; i < points.length; i++, k += 4) {
 
-			let rex = 0x0, rey = 0x0, cew = 0x0, ceh = 0x0;
-
-			const [ name, type ] = point.el.classList;
+			const [ name, type ] = points[i].el.classList;
 
 			if (name === 'pasL-rcons') {
-
-				const p = type.charAt(0), a = type.charAt(2);
-
-				if (p === 'c') {
-					rex = ((locked && a === 't') || a === 'l');
-					rey = ((locked && a === 'l') || a === 't');
-					cew = ( locked || a === 'l'  || a === 'r');
-					ceh = ( locked || a === 't'  || a === 'b');
-				} else {
-					rex = (p === 'l'), cew = true;
-					rey = (a === 't'), ceh = true;
-				}
+				flag |= getCourseFlags(type, locked) << k;
 			}
-			flag |= (rex << (k + 0)) | (cew << (k + 2)) |
-			        (rey << (k + 1)) | (ceh << (k + 3)), k += 4;
 		}
 		data.t = top, data.h = height, data.lock = locked,
 		data.l = left, data.w = width, data.flag = flag;
@@ -399,6 +384,24 @@ const getPoint2D = ([a,b]) => Math.sqrt(
 	(a.clientX - b.clientX) * (a.clientX - b.clientX) +
 	(a.clientY - b.clientY) * (a.clientY - b.clientY)
 );
+
+const getCourseFlags = (cf = '', lock = false) => {
+
+	let rex = false, rey = false, cew = false, ceh = false;
+
+	const c = cf.charAt(0), f = cf.charAt(2);
+
+	if (c === 'c') {
+		rex = ((lock && f === 't') || f === 'l');
+		rey = ((lock && f === 'l') || f === 't');
+		cew = ( lock || f === 'l'  || f === 'r');
+		ceh = ( lock || f === 't'  || f === 'b');
+	} else {
+		rex = (c === 'l'), cew = true;
+		rey = (f === 't'), ceh = true;
+	}
+	return (rex << 0x0) | (rey << 0x1) | (cew << 0x2) | (ceh << 0x3); 
+} 
 
 // simple utility for create/change DOM elements
 function _setup(el, attrs, events) {

@@ -109,98 +109,107 @@ class TowL extends PointTracker {
 
 		const { svg, box, _ratio } = this;
 
-		data.ratio = _ratio;
-
-		const b0 = box.getBoundingClientRect(), sels = [];
-
+		for (const sel of box.getElementsByClassName('towL-select')) {
+			sel.classList.remove('act-v');
+		}
 		for (let i = 0; i < points.length; i++) {
 
-			let { el } = points[i];
+			let { el } = points[i], sel = null, fl = 0, el_class = el.classList;
 
 			if (el === svg || el === box)
 				continue;
-
-			let { left, top, width, height } = el.getBoundingClientRect(),
-			    type = el.nodeName, el_class = el.classList, sel;
-
-			left -= b0.left, top -= b0.top;
-
-			if (type in TowL) {
-				sel = TowL.makeSelect(type,
-					(left -= 5), (top -= 5), (width += 10), (height += 10)
-				);
-				sel._figure = el;
-			} else if (el_class[0] === 'towL-select') {
-				type = el_class[1].substring('towL-'.length);
+			if (el_class[0] === 'towL-select') {
 				el = (sel = el)._figure;
+			} else if (el_class[0] === 'pasL-rcons') {
+				el = (sel = el.parentNode)._figure;
+				fl = getCourseFlags(el_class[1]);
+			} else if (!(sel = el._sel)) {
+				sel = el._sel = TowL.selectable(el.nodeName);
+				sel._figure = el;
 			}
-			data[i] = TowL[type](el);
-			data[i].sel = sel;
-			data[i].start_x = left;
-			data[i].start_y = top;
-			data[i].start_w = width;
-			data[i].start_h = height;
-			svg.append(el);
-			sels.push( box.appendChild(sel) );
-		}
-		for (const sel of box.getElementsByClassName('towL-select')) {
-			sel.classList[ sels.includes(sel) ? 'add' : 'remove' ]('act-v');
+			data[i] = TowL[el.nodeName](el, _ratio, fl);
+			svg.append(el),
+			box.appendChild(sel).classList.add('act-v');
 		}
 	}
 	_emitChange(points, data) {
 		if (data[0]) {
-			data[0].move(points[0].x * data.ratio, points[0].y * data.ratio);
-			data[0].sel.style.left = (data[0].start_x + points[0].x) +'px';
-			data[0].sel.style.top  = (data[0].start_y + points[0].y) +'px';
+			data[0].move(points[0]);
 		}
 	}
 }
 
-TowL.circle = TowL.ellipse = (el) => {
-	let sX = el.cx.baseVal.value,
-	    sY = el.cy.baseVal.value;
+TowL.circle = TowL.ellipse = (el, r = 1) => {
+	const sX = el.cx.baseVal.value,
+	      sY = el.cy.baseVal.value;
 	return {
-		move: (x,y) => {
-			el.cx.baseVal.value = sX + x;
-			el.cy.baseVal.value = sY + y;
+		move: ({ x, y }) => {
+			el.cx.baseVal.value = sX + x * r;
+			el.cy.baseVal.value = sY + y * r;
 		}
 	}
 }
-TowL.line = (el) => {
-	let sX1 = el.x1.baseVal.value, sX2 = el.x2.baseVal.value,
-	    sY1 = el.y1.baseVal.value, sY2 = el.y2.baseVal.value;
+TowL.line = (el, r = 1) => {
+	const sX1 = el.x1.baseVal.value, sX2 = el.x2.baseVal.value,
+	      sY1 = el.y1.baseVal.value, sY2 = el.y2.baseVal.value;
 	return {
-		move: (x,y) => {
-			el.x1.baseVal.value = sX1 + x, el.x2.baseVal.value = sX2 + x;
-			el.y1.baseVal.value = sY1 + y, el.y2.baseVal.value = sY2 + y;
+		move: ({ x, y }) => {
+			el.x1.baseVal.value = sX1 + x * r, el.x2.baseVal.value = sX2 + x * r;
+			el.y1.baseVal.value = sY1 + y * r, el.y2.baseVal.value = sY2 + y * r;
 		}
 	}
 }
-TowL.text = (el) => {
-	let sX = el.x.baseVal[0].value,
-	    sY = el.y.baseVal[0].value;
+TowL.text = (el, r = 1) => {
+	const sX = el.x.baseVal[0].value, rX = sX / r,
+	      sY = el.y.baseVal[0].value, rY = sY / r;
+
+	const { width:rW, height:rH } = el.getBoundingClientRect(), pad = 5, sel = el._sel.style;
+
+	sel.left = `${rX - pad}px`, sel.width  = `${pad + rW + pad}px`;
+	sel.top  = `${rY - pad}px`, sel.height = `${pad + rH + pad}px`;
+
 	return {
-		move: (x,y) => {
-			el.x.baseVal[0].value = sX + x;
-			el.y.baseVal[0].value = sY + y;
+		move: ({ x, y }) => {
+			el.x.baseVal[0].value = sX + x * r; sel.left = `${rX + x - pad}px`;
+			el.y.baseVal[0].value = sY + y * r; sel.top  = `${rY + y - pad}px`;
 		}
 	}
 }
-TowL.rect = (el) => {
-	let sX = el.x.baseVal.value,
-	    sY = el.y.baseVal.value;
+TowL.rect = (el, r = 1, fl = 0) => {
+	const sX = el.x.baseVal.value, sW = el.width.baseVal.value,
+	      sY = el.y.baseVal.value, sH = el.height.baseVal.value;
+
+	const rX = sX / r, rW = sW / r, pad = 5,
+	      rY = sY / r, rH = sH / r, sel = el._sel.style;
+
+	const rex = fl & 0x1, cew = fl & 0x4,
+	      rey = fl & 0x2, ceh = fl & 0x8;
+
+	sel.left = `${rX - pad}px`, sel.width  = `${pad + rW + pad}px`;
+	sel.top  = `${rY - pad}px`, sel.height = `${pad + rH + pad}px`;
+
 	return {
-		move: (x,y) => {
-			el.x.baseVal.value = sX + x;
-			el.y.baseVal.value = sY + y;
+		move: fl ? ({ x, y }) => {
+			const w = sW + (rex ? -x : x) * r, eW = w > 1,
+			      h = sH + (rey ? -y : y) * r, eH = h > 1;
+			if (rex)
+				el.x.baseVal.value = sX + (eW ? x * r : sW), sel.left = `${rX + (eW ? x : rW) - pad}px`;
+			if (rey)
+				el.y.baseVal.value = sY + (eH ? y * r : sH), sel.top  = `${rY + (eH ? y : rH) - pad}px`;
+			if (cew)
+				el.width.baseVal.value  = eW ? w : 1, sel.width  = `${pad + (eW ? w / r : 1) + pad}px`;
+			if (ceh)
+				el.height.baseVal.value = eH ? h : 1, sel.height = `${pad + (eH ? h / r : 1) + pad}px`;
+		} : ({ x, y }) => {
+			el.x.baseVal.value = sX + x * r; sel.left = `${rX + x - pad}px`;
+			el.y.baseVal.value = sY + y * r; sel.top  = `${rY + y - pad}px`;
 		}
 	}
 }
 
-TowL.makeSelect = (type, l, t, w, h) => {
-	const sel = _setup('div', { class: 'towL-select towL-'+ type, 
-		style: `position: absolute; left: ${l}px; top: ${t}px; width: ${w}px; height: ${h}px;`
-	});
+TowL.selectable = (type) => {
+	const sel = _setup('div', { class: 'towL-select towL-'+ type, style: 'position: absolute;' });
+
 	if (type === 'text') {
 	
 	} else if (type === 'line') {
