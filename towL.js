@@ -39,57 +39,38 @@ class TowL extends PointTracker {
 	/**
 	* @name String `rect | circle | ellipse | path | text | line | path`
 	*/
-	addFigure(name, params = {
-		x: 0, y: 0, w: 50, h: 50,
-		svg_attrs: {},
-		content: 'Example Text'
+	addFigure(type, params = {
+		x: 0, y: 0, w: 50, h: 50, svg_attrs: {}, content: ''
 	}) {
 		const { x = 0, y = 0, w = 50, h = 50, svg_attrs, content } = params;
 
-		const is_line = name === 'line', is_circ = name === 'circle',
-		      is_path = name === 'path', is_text = name === 'text',
-		     is_elips = name === 'ellipse' || is_circ && w !== h,
-		     no_attrs = !(svg_attrs && Object.keys(svg_attrs).length);
+		const attrs = Object.create(null),
+		      empty = !(svg_attrs && Object.keys(svg_attrs).length);
 
-		const figure = document.createElementNS('http://www.w3.org/2000/svg', (is_elips ? 'ellipse' : name));
-		const attrs  = {};
+		let stroke = 1, is_text = false;
 
-		if (no_attrs) {
-			attrs['stroke-width'] = is_line || is_path ? 3 : 1;
-		} else {
-			Object.assign(attrs, svg_attrs);
+		if (!empty) {
+			stroke = Object.assign(attrs, svg_attrs)['stroke-width'];
+			delete attrs['stroke-width'];
 		}
-		if (is_elips || is_circ) {
-			let rx = w * .5, ry = h * .5;
+		if (type === 'circle' || type === 'ellipse') {
+			type = 'ellipse';
 
-			attrs.cx = rx + x;
-			attrs.cy = ry + y;
+			attrs.cx = (attrs.rx = w *.5) + x;
+			attrs.cy = (attrs.ry = h *.5) + y;
 
-			if (is_elips) {
-				attrs.rx = rx;
-				attrs.ry = ry;
-			} else
-				attrs.r  = rx;
-		} else if (is_path || is_line) {
-			let o,sw = attrs['stroke-width'];
-			if (!(sw > 0)) {
-				o = 1.5, attrs['stroke-width'] = 3;
-			} else {
-				o = sw * .5;
-			}
-			if (is_line) {
-				attrs.x1 = x, attrs.x2 = x + w;
-				attrs.y1 =    attrs.y2 = y + o;
-			} else
-				attrs.d = `M ${x},${y+o} ${w+x},${y+o}`;
+		} else if (type === 'line') {
+			if (empty || !(stroke > 0))
+				stroke = 3;
+			attrs.x1 = x, attrs.x2 = x + w;
+			attrs.y1 =    attrs.y2 = y + stroke *.5;
 		} else {
 
 			attrs.x = x, attrs.y = y;
 
-			if (is_text) {
+			if ((is_text = type === 'text')) {
 				attrs['dominant-baseline'] = 'text-before-edge';
-				figure.textContent = content || 'Example Text';
-				if (no_attrs) {
+				if (empty) {
 					attrs['font-weight'] = 'bold';
 					attrs['font-family'] = 'sans-serif';
 					attrs['font-size'  ] = 18;
@@ -99,9 +80,14 @@ class TowL extends PointTracker {
 				attrs.height = h;
 			}
 		}
+		const figure = document.createElementNS('http://www.w3.org/2000/svg', type);
+
 		for (let key in attrs)
 			figure.setAttribute(key, attrs[key]);
-
+		if (stroke > 0)
+			figure.setAttribute('stroke-width', stroke);
+		if (is_text)
+			figure.textContent = content || 'Example Text'
 		this.svg.append(figure);
 	}
 
@@ -142,9 +128,9 @@ class TowL extends PointTracker {
 	}
 }
 
-TowL.circle = TowL.ellipse = (el, sr = 1, fl = 0) => {
-	const _X = el.cx.baseVal.value, xR = (el.rx || el.r).baseVal.value,
-	      _Y = el.cy.baseVal.value, yR = (el.ry || el.r).baseVal.value;
+TowL.ellipse = (el, sr = 1, fl = 0) => {
+	const _X = el.cx.baseVal.value, xR = el.rx.baseVal.value,
+	      _Y = el.cy.baseVal.value, yR = el.ry.baseVal.value;
 
 	const left = (_X - xR) / sr, width  = (xR + xR) / sr, pad = 5,
 	      top  = (_Y - yR) / sr, height = (yR + yR) / sr;
