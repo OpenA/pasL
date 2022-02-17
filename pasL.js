@@ -316,10 +316,10 @@ class PasL extends PointTracker {
 
 		for (let i = 0, k = 0; i < points.length; i++, k += 4) {
 
-			const [ name, type ] = points[i].el.classList;
+			const [ name, cf ] = points[i].el.classList;
 
 			if (name === 'pasL-rcons') {
-				flag |= getCourseFlags(type, locked) << k;
+				flag |= PasL.parseCF(cf, locked) << k;
 			}
 		}
 		data.t = top, data.h = height, data.lock = locked,
@@ -380,12 +380,11 @@ PasL.onStartEvent  = 'PasL start';
 PasL.onChangeEvent = 'PasL change';
 PasL.onEndEvent    = 'PasL end';
 
-const getPoint2D = ([a,b]) => Math.sqrt(
-	(a.clientX - b.clientX) * (a.clientX - b.clientX) +
-	(a.clientY - b.clientY) * (a.clientY - b.clientY)
+const getPoint2D = (a,b) => Math.sqrt(
+	(a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)
 );
 
-const getCourseFlags = (cf = '', lock = false) => {
+PasL.parseCF = (cf = '', lock = false) => {
 
 	let rex = false, rey = false, cew = false, ceh = false;
 
