@@ -100,154 +100,228 @@ class TowL extends PointTracker {
 		}
 		for (let i = 0; i < points.length; i++) {
 
-			let { el } = points[i], sel = null, fl = 0, el_class = el.classList;
+			let { el } = points[i], sel = null, fl = 0;
 
 			if (el === svg || el === box)
 				continue;
-			if (el_class[0] === 'towL-select') {
+			let { style, classList: [c0,c1] } = el;
+			if (c0 === 'towL-select') {
 				el = (sel = el)._figure;
-			} else if (el_class[0] === 'pasL-rcons') {
+			} else if (c0 === 'pasL-rcons') {
 				el = (sel = el.parentNode)._figure;
-				fl = PasL.parseCF(el_class[1]);
-			} else if (el_class[0] === 'towL-point') {
+				fl = PasL.parseCF(c1);
+				style = sel.style;
+			} else if (c0 === 'towL-point') {
 				el = (sel = el.parentNode)._figure;
-				fl = el_class[1] === 'e-d' ? 0x10 : el_class[1] === 's-d' ? 0x20 : 0;
-			} else if (!(sel = el._sel)) {
-				sel = el._sel = TowL.selectable(el.nodeName);
-				sel._figure = el;
+				fl = (c1 === 's-d'   ? 0x10 :
+				      c1 === 'e-d'   ? 0x20 :
+				      c1 === 'r-o-t' ? 0x40 : 0);
+				if (el.nodeName === 'text' || el.nodeName === 'line')
+					style = sel.style;
+			} else {
+				if (!(sel = el._sel)) {
+					sel = el._sel = TowL.createSelection(el.nodeName);
+					sel._figure = el;
+				}
+				style = sel.style;
 			}
-			data[i] = TowL[el.nodeName](el, _ratio, fl);
+			const { left, top, width, height, pad } = (
+				data[i] = TowL[el.nodeName](el, _ratio, fl, style)
+			);
+			data[i].style = style;
+			sel.style.left = `${left - pad}px`, sel.style.width  = `${pad + width  + pad}px`;
+			sel.style.top  = `${top  - pad}px`, sel.style.height = `${pad + height + pad}px`;
 			svg.append(el),
 			box.appendChild(sel).classList.add('act-v');
 		}
 	}
 	_emitChange(points, data) {
 		if (data[0]) {
-			data[0].move(points[0]);
+			const { left, top, width, height, pad, flags, style } = data[0];
+			const { x, y } = points[0];
+
+			if (!flags) {
+				style.left = `${left + x - pad}px`;
+				style.top  = `${top  + y - pad}px`;
+				data[0].setPosition(x, y);
+			} else if (flags & 0x40) { // rotate
+				let angle = Math.atan2(width / 2 + x, height / 2 + y) * -(180 / Math.PI);
+				style.transform = angle ? `rotate(${angle}deg)` : null;
+				data[0].setRotate(angle);
+			} else if (flags & 0x10 || flags & 0x20) { // rotate
+				data[0].move(x,y);
+			} else {
+				const rex = flags & 0x1, cew = flags & 0x4,
+					  rey = flags & 0x2, ceh = flags & 0x8;
+				
+				let rx = rex ? -x : x, w = width  + rx; if (w < 0) w = 0;
+				let ry = rey ? -y : y, h = height + ry; if (h < 0) h = 0;
+
+				if (rex) style.left = `${left + (w ? x : width)  - pad}px`;
+				if (rey) style.top  = `${top  + (h ? y : height) - pad}px`;
+				if (cew) {
+					style.width = `${pad + w + pad}px`;
+					data[0].setWidth(x, rx, w, rex);
+				}
+				if (ceh) {
+					style.height = `${pad + h + pad}px`;
+					data[0].setHeight(y, ry, h, rey);
+				}
+			}
 		}
 	}
 }
 
-TowL.ellipse = (el, sr = 1, fl = 0) => {
+TowL.ellipse = (el, sr = 1, flags = 0) => {
 	const _X = el.cx.baseVal.value, xR = el.rx.baseVal.value,
 	      _Y = el.cy.baseVal.value, yR = el.ry.baseVal.value;
 
 	const left = (_X - xR) / sr, width  = (xR + xR) / sr, pad = 5,
 	      top  = (_Y - yR) / sr, height = (yR + yR) / sr;
+	
+	const mtx = TowL.getTransformRotate(el, Boolean(flags & 0x40));
 
-	const rex = fl & 0x1, cew = fl & 0x4,
-	      rey = fl & 0x2, ceh = fl & 0x8;
+	return { left, top, width, height, pad, flags,
 
-	const sel = el._sel.style;
-
-	sel.left = `${left - pad}px`, sel.width  = `${pad + width  + pad}px`;
-	sel.top  = `${top  - pad}px`, sel.height = `${pad + height + pad}px`;
-
-	return {
-		move: fl ? ({ x, y }) => {
-
-			let rx = rex ? -x : x, w = width  + rx; if (w < 0) w = 0;
-			let ry = rey ? -y : y, h = height + ry; if (h < 0) h = 0;
-
-			if (rex) sel.left = `${left + (w ? x : width) - pad}px`;
-			if (rey) sel.top  = `${top + (h ? y : height) - pad}px`;
-			if (cew) {
-				sel.width = `${pad + w + pad}px`;
-				el.cx.baseVal.value = _X + (w ? x * sr * .5 : rex ?xR:-xR);
-				el.rx.baseVal.value = (w ? xR +rx * sr * .5 : .5);
-			}
-			if (ceh) {
-				sel.height = `${pad + h + pad}px`;
-				el.cy.baseVal.value = _Y + (h ? y * sr * .5 : rey ?yR:-yR);
-				el.ry.baseVal.value = (h ? yR +ry * sr * .5 : .5);
-			}
-		} : ({ x, y }) => {
-			el.cx.baseVal.value = _X + x * sr; sel.left = `${left + x - pad}px`;
-			el.cy.baseVal.value = _Y + y * sr; sel.top  = `${top  + y - pad}px`;
+		setRotate: (angle) => {
+			mtx.setRotate(angle, _X, _Y);
+		},
+		setPosition: (x, y) => {
+			let cx = (el.cx.baseVal.value = _X + x * sr);
+			let cy = (el.cy.baseVal.value = _Y + y * sr);
+			if (mtx)
+				mtx.setRotate(mtx.angle, cx, cy);
+		},
+		setWidth: (x, rx, w, re = false) => {
+			el.cx.baseVal.value = _X + (w ? x * sr * .5 : re ?xR:-xR);
+			el.rx.baseVal.value = (w ? xR +rx * sr * .5 : .5);
+		},
+		setHeight: (y, ry, h, re = false) => {
+			el.cy.baseVal.value = _Y + (h ? y * sr * .5 : re ?yR:-yR);
+			el.ry.baseVal.value = (h ? yR +ry * sr * .5 : .5);
 		}
 	}
 }
-TowL.line = (el, r = 1) => {
-	const sX1 = el.x1.baseVal.value, sX2 = el.x2.baseVal.value,
-	      sY1 = el.y1.baseVal.value, sY2 = el.y2.baseVal.value;
-	return {
-		move: ({ x, y }) => {
-			el.x1.baseVal.value = sX1 + x * r, el.x2.baseVal.value = sX2 + x * r;
-			el.y1.baseVal.value = sY1 + y * r, el.y2.baseVal.value = sY2 + y * r;
+TowL.line = (el, sr = 1, flags = 0, style) => {
+	const _X1 = el.x1.baseVal.value, _X2 = el.x2.baseVal.value,
+	      _Y1 = el.y1.baseVal.value, _Y2 = el.y2.baseVal.value;
+
+	const pad = parseInt(el.getAttribute('stroke-width')) / sr;
+
+	const left = (_X1 < _X2 ? _X1 : _X2) / sr, width  = (_X1 < _X2 ? _X2 - _X1 : _X1 - _X2) / sr,
+	      top  = (_Y1 < _Y2 ? _Y1 : _Y2) / sr, height = (_Y1 < _Y2 ? _Y2 - _Y1 : _Y1 - _Y2) / sr;
+
+	//const {left, top, width, height} = el.getBoundingClientRect();
+
+	return { left, top, width, height, pad, flags,
+		move: flags & 0x10 ? (x, y) => {
+			el.x1.baseVal.value = _X1 + x* sr;
+			el.y1.baseVal.value =  _Y1 + y* sr;
+			style.left = (left + x) +'px';
+			style.top = (top + y) +'px';
+		} : (x, y) => {
+			el.x2.baseVal.value = _X2 + x* sr;
+			el.y2.baseVal.value =  _Y2 + y* sr;
+			style.left = (left + x) +'px';
+			style.top = (top + y) +'px';
+		},
+		setPosition: (x, y) => {
+			x *= sr, y *= sr;
+			el.x1.baseVal.value = _X1 + x, el.x2.baseVal.value = _X2 + x;
+			el.y1.baseVal.value = _Y1 + y, el.y2.baseVal.value = _Y2 + y;
 		}
 	}
 }
-TowL.text = (el, sr = 1) => {
-	const _X = el.x.baseVal[0].value, left = _X / sr,
-	      _Y = el.y.baseVal[0].value, top  = _Y / sr;
+TowL.text = (el, sr = 1, flags = 0) => {
 
-	const { width, height } = el.getBoundingClientRect(), pad = 5, sel = el._sel.style;
-
-	sel.left = `${left - pad}px`, sel.width  = `${pad + width  + pad}px`;
-	sel.top  = `${top  - pad}px`, sel.height = `${pad + height + pad}px`;
+	const { x: _X, y: _Y, width: _W, height: _H } = el.getBBox();
+	const mtx = TowL.getTransformRotate(el, Boolean(flags & 0x40));
 
 	return {
-		move: ({ x, y }) => {
-			el.x.baseVal[0].value = _X + x * sr; sel.left = `${left + x - pad}px`;
-			el.y.baseVal[0].value = _Y + y * sr; sel.top  = `${top  + y - pad}px`;
+		left: _X / sr, width: _W / sr, flags,
+		top: _Y / sr, height: _H / sr, pad: 5,
+
+		setRotate: (angle) => {
+			mtx.setRotate(angle, _X + _W / 2, _Y + _H / 2);
+		},
+		setPosition: (x, y) => {
+			let cx = el.x.baseVal[0].value = _X + x * sr;
+			let cy = el.y.baseVal[0].value = _Y + y * sr;
+			if (mtx)
+				mtx.setRotate(mtx.angle, cx + _W / 2, cy + _H / 2);
 		}
 	}
 }
-TowL.rect = (el, sr = 1, fl = 0) => {
+TowL.rect = (el, sr = 1, flags = 0, style) => {
 	const _X = el.x.baseVal.value, _W = el.width.baseVal.value,
 	      _Y = el.y.baseVal.value, _H = el.height.baseVal.value,
 	      _R = el.rx.baseVal.value;
 
-	const left = _X / sr, width  = _W / sr, pad = 5,
-	      top  = _Y / sr, height = _H / sr, rdx = _R / sr;
+	const left = _X / sr, width  = _W / sr, xR = _W / 2, pad = 5,
+	      top  = _Y / sr, height = _H / sr, yR = _H / 2, rdx = _R / sr;
 
-	const rex = fl & 0x1, cew = fl & 0x4, cer = fl & 0x10,
-	      rey = fl & 0x2, ceh = fl & 0x8, rot = fl & 0x20;
+	const rad = el._sel.children[1].style; rad.width  = `${rdx}px`;
+	const mtx = TowL.getTransformRotate(el, Boolean(flags & 0x40));
 
-	const rad = el._sel.children[1].style, sel = el._sel.style;
+	return { left, top, width, height, pad, flags,
 
-	sel.left = `${left - pad}px`, sel.width  = `${pad + width  + pad}px`; rad.width  = `${rdx}px`;
-	sel.top  = `${top  - pad}px`, sel.height = `${pad + height + pad}px`;
-
-	return {
-		move: cer ? ({ x }) => {
+		move: x => {
 			let rx = _R + x * sr;
 			el.rx.baseVal.value = rx <= 0 ? 0 : rx;
 			rad.width = `${rx <= 0 ? 0 : rdx + x}px`;
-		} : rot ? ({ x, y }) => {
-			var cx = _X+_W*.5, cy = _Y+_H*.5;
-			let r  = Math.atan2(x, y) * (180 / Math.PI) * -1 - 90;
-			el.setAttribute('transform', `rotate(${r}, ${cx}, ${cy})`);
-			sel.transform = `rotate(${r}deg)`;
-		} : fl ? ({ x, y }) => {
-
-			let rx = rex ? -x : x, w = width  + rx; if (w < 0) w = 0;
-			let ry = rey ? -y : y, h = height + ry; if (h < 0) h = 0;
-
-			if (rex) el.x.baseVal.value = _X + (w ?  x * sr : _W), sel.left = `${left + (w ? x : width ) - pad}px`;
-			if (rey) el.y.baseVal.value = _Y + (h ?  y * sr : _H), sel.top  = `${top  + (h ? y : height) - pad}px`;
-			if (cew) el.width.baseVal.value  = (w ? rx * sr + _W : 1), sel.width  = `${pad + w + pad}px`;
-			if (ceh) el.height.baseVal.value = (h ? ry * sr + _H : 1), sel.height = `${pad + h + pad}px`;
-		} : ({ x, y }) => {
-			el.x.baseVal.value = _X + x * sr; sel.left = `${left + x - pad}px`;
-			el.y.baseVal.value = _Y + y * sr; sel.top  = `${top  + y - pad}px`;
+		},
+		setRotate: (angle) => {
+			mtx.setRotate(angle, _W / 2 + _X, _H / 2 + _Y);
+		},
+		setPosition: (x, y) => {
+			let cx = (el.x.baseVal.value = _X + x * sr);
+			let cy = (el.y.baseVal.value = _Y + y * sr);
+			if (mtx)
+				mtx.setRotate(mtx.angle, _W / 2 + cx, _H / 2 + cy);
+		},
+		setWidth: (x, rx, w, re = false) => {
+			if (re) el.x.baseVal.value = _X + (w ? x * sr : _W);
+			el.width.baseVal.value = w ? rx * sr + _W : 1;
+		},
+		setHeight: (y, ry, h, re = false) => {
+			if (re) el.y.baseVal.value = _Y + (h ? y * sr : _H);
+			el.height.baseVal.value = h ? ry * sr + _H : 1;
 		}
 	}
 }
+TowL.getTransformRotate = (el, init = false) => {
 
-TowL.selectable = (type) => {
+	const tList = el.transform.baseVal;
+	let matrx = null;
+
+	for (let i = 0; i < tList.numberOfItems; i++) {
+		if (tList[i].type === tList[i].SVG_TRANSFORM_ROTATE) {
+			matrx = tList[i];
+			break;
+		}
+	}
+	if (init && !matrx)
+		tList.appendItem((matrx = el.viewportElement.createSVGTransform()));
+	return matrx;
+}
+
+TowL.createSelection = (type) => {
 	const sel = _setup('div', { class: 'towL-select towL-'+ type, style: 'position: absolute;' });
 
 	if (type === 'text') {
 	
 	}
+	if (type !== 'circle') {
+		sel.append(
+			_setup('div', { class: 'towL-point '+ (type === 'line' ? 's-d' : 'r-o-t') })
+		);
+	}
 	if (type === 'rect' || type === 'line') {
 		sel.append(
-			_setup('div', { class: 'towL-point s-d' }),
 			_setup('div', { class: 'towL-point e-d' })
 		);
 	}
-	if (type === 'rect' || type === 'ellipse' || type === 'circle') {
+	if (type === 'rect' || type === 'ellipse') {
 		sel.append(
 			_setup('div', { class: 'pasL-rcons l-t' }),
 			_setup('div', { class: 'pasL-rcons r-t' }),

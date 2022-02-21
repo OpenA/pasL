@@ -81,7 +81,20 @@
 
 /* === towL elements style === */
 .towL-select.act-v, .towL-point {
+	position: absolute;
 	border: 1px dashed black;
+}
+.towL-point:before {
+	content: '';
+	background-color: whitesmoke;
+	border: 1px solid black;
+	border-radius: 100%;
+	position: absolute;
+	padding: 4.5px;
+}
+.towL-point.e-d, .towL-point.s-d {
+	border-width: 1px 0 0 0;
+	height: 0;
 }
 .towL-text.act-v {
 	border: 1px dotted white;
@@ -90,28 +103,31 @@
 .towL-select:not(.act-v) * {
 	display: none;
 }
-.towL-rect > .e-d {
-	position: absolute;
-	top: 50%; height: 0;
-	border-width: 1px 0 0 0;
+.towL-point.e-d, .towL-point.s-d {
+	top: 50%;
 }
-.towL-rect > .s-d {
-	position: absolute;
-	left: 50%; top: -10px; width: 0; height: 10px;
+.towL-line > .towL-point.s-d {
+	left: 0; width: 10px;
+}
+.towL-line > .towL-point.e-d {
+	right: 0; width: 10px;
+}
+.towL-point.r-o-t {
+	transform-origin: top;
+	left: 50%; top: 50%;
+	width: 0; height: 50%;
 	border-width: 0 1px 0 0;
+	padding-bottom: 10px;
+	cursor: grabbing;
 }
-.towL-point.e-d:after, .towL-point.s-d:before {
-	content: '';
-	background-color: whitesmoke;
-	border: 1px solid black;
-	border-radius: 100%;
-	position: absolute;
-	padding: 4px;
+.towL-point.r-o-t:before {
+	background-color: darkseagreen;
+	bottom: -5px; left: -5px;
 }
 .towL-point.s-d:before {
 	top: -5px; left: -5px;
 }
-.towL-point.e-d:after {
+.towL-point.e-d:before {
 	top: -5px; right: -5px;
 } /* = = = = = = = = */
 
