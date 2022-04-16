@@ -56,14 +56,14 @@ class TowL extends PointTracker {
 		if (type === 'circle' || type === 'ellipse') {
 			type = 'ellipse';
 
-			attrs.cx = (attrs.rx = w *.5) + x;
-			attrs.cy = (attrs.ry = h *.5) + y;
+			attrs.cx = (attrs.rx = w / 2) + x;
+			attrs.cy = (attrs.ry = h / 2) + y;
 
 		} else if (type === 'line') {
 			if (empty || !(stroke > 0))
 				stroke = 3;
 			attrs.x1 = x, attrs.x2 = x + w;
-			attrs.y1 =    attrs.y2 = y + stroke *.5;
+			attrs.y1 =    attrs.y2 = y + stroke / 2;
 		} else {
 
 			attrs.x = x, attrs.y = y;
@@ -76,8 +76,7 @@ class TowL extends PointTracker {
 					attrs['font-size'  ] = 18;
 				}
 			} else {
-				attrs.width  = w;
-				attrs.height = h;
+				attrs.width  = w, attrs.height = h;
 			}
 		}
 		const figure = document.createElementNS('http://www.w3.org/2000/svg', type);
