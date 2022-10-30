@@ -108,7 +108,7 @@ class TowL extends PointTracker {
 				el = (sel = el)._figure;
 			} else if (c0 === 'pasL-rcons') {
 				el = (sel = el.parentNode)._figure;
-				fl = PasL.parseCF(c1);
+				fl = parseCMark(c1);
 				style = sel.style;
 			} else if (c0 === 'towL-point') {
 				el = (sel = el.parentNode)._figure;

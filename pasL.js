@@ -10,10 +10,9 @@ class PointTracker {
 
 	constructor(opts = {}) {
 
-		const { elem = null, bubbles = true } = opts;
+		const { elem = null, bubbles = false } = opts;
 
 		this.bubbles = bubbles;
-		//this.debug = false;
 
 		if (elem instanceof Element) {
 			if (winHasMultiTouch) {
@@ -96,8 +95,6 @@ class PointTracker {
 
 			if (!this.bubbles)
 				e.stopPropagation();
-			//if (this.debug)
-			//	this._emitDebug(e);
 
 			const c = e.type.charAt('touch'.length),
 			    len = e.touches.length,
@@ -140,19 +137,14 @@ class PointTracker {
 		elem.addEventListener('touchcancel', onTouch);
 	}
 
-	/*_emitDebug(e) {
-		const el = document.getElementById('myDebug') || document.body.appendChild(
-			_setup('span', { id: 'myDebug', style:
-			'color: black; right: 0; top: 0; position: fixed; background: white; z-index: 9999;'
-		}));
-		let text = '', label = e.type.replace(/touch|pointer|mouse/, '');
-		for (let o of (e.touches || []))
-			text += '\nt_x:'+ o.clientX+'\nt_y:'+ o.clientY;
-		for (let o of (e.changedTouches || []))
-			text += '\nc_x:'+ o.clientX+'\nc_y:'+ o.clientY;
-		el.textContent = label +'\n'+ text;
-	}*/
+	distance(p_x, p_y) {
+		return Math.sqrt(p_x * p_x + p_y * p_y);
+	}
 }
+
+const PasL_onStart  = 'PasL start';
+const PasL_onChange = 'PasL change';
+const PasL_onEnd    = 'PasL end';
 
 class PasL extends PointTracker {
 
@@ -160,11 +152,14 @@ class PasL extends PointTracker {
 	 * **lock**: `true | 0x2` locked aspect of selection block.
 	 * * second bit flag render clickable button for lock/unlock
 	 * 
+	 * **ruler**: `true | 0x2` show selection coordinates and size.
+	 * * second bit flag placed ruler in to bottom (default - top)
+	 * 
 	 * **edgies**: `true` add active flat edges.
 	 */
 	constructor(opts = {}) {
 
-		const { lock = false, edgies = false } = opts;
+		const { lock = false, edgies = false, ruler = true } = opts;
 
 		const _Box = _setup('div', { class: 'pasL-box', style: 'position: absolute;'}),
 		   _Select = _setup('div', { class: 'pasL-select' }),
@@ -199,25 +194,23 @@ class PasL extends PointTracker {
 				_setup('div', { class: 'pasL-rcons c-b' })
 			);
 		}
+		if (ruler) {
+			const rul = _setup('span', { class: 'pasL-ruler pasL-dark' }),
+			    onAct = ({ type }) => {
+				rul.style.display = type === PasL_onEnd ? 'none' : null;
+			}
+			_Box.addEventListener(PasL_onEnd, onAct);
+			_Box.addEventListener(PasL_onStart, onAct);
+			_Box.addEventListener(PasL_onChange, ({ detail: { x,y,w,h } }) => {
+				rul.textContent = `x:${x} y:${y} ~ w:${w} h:${h}`;
+			});
+			Element.prototype.append.call(ruler & 0x2 ? _Bottom : _Top, rul);
+		}
 		if (lock & 0x2) {
-			const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'),
-			     path = document.createElementNS('http://www.w3.org/2000/svg', 'path'),
-			     rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+			const lck =_Select.appendChild( makeLocker(lock & 0x1) );
 
-			svg.append(
-				_setup(path, { d: 'M 15,20.5 C 15,20.5 13,7 22,7 31,7 29,20.5 29,20.5', fill: 'none', 'stroke-width': 3 }),
-				_setup(rect, { width:25, height:16, x:9.5, y:20, rx:1.5, ry:8 })
-			);
-			_Select.append(
-				_setup(svg, { class: 'pasL-lock'+ (lock & 0x1 ? ' locked' : ''), viewBox: '0 0 43 43' }, {
-					click: e => {
-						e.stopPropagation();
-						svg.classList.toggle('locked');
-					}
-				})
-			);
-			locked.get = () => svg.classList.contains('locked');
-			locked.set =  y => svg.classList[ y ? 'add' : 'remove' ]('locked');
+			locked.get = () => lck.classList.contains('locked');
+			locked.set =  y => lck.classList[ y ? 'add' : 'remove' ]('locked');
 		} else {
 			locked.value = Boolean(lock);
 		}
@@ -248,22 +241,6 @@ class PasL extends PointTracker {
 		if (Number.isFinite(y)) {
 			this.top = (y = zoneH < y + height ? zoneH - height : y > 0 ? y : 0),
 			this.bottom = zoneH - y - height;
-		}
-	}
-	setWidth(w, re = false) {
-		const { left, right, zoneW } = this;
-		let x = re ? right : left;
-		if (Number.isFinite(w)) {
-			this.width = (w = zoneW < w + x ? zoneW - x : w > 0 ? w : 0),
-			this[re ? 'left' : 'right'] = zoneW - x - w;
-		}
-	}
-	setHeight(h, re = false) {
-		const { top, bottom, zoneH } = this;
-		let y = re ? bottom : top;
-		if (Number.isFinite(h)) {
-			this.height = (h = zoneH < h + y ? zoneH - y : h > 0 ? h : 0),
-			this[re ? 'top' : 'bottom'] = zoneH - y - h;
 		}
 	}
 	updZone({ width:cW, height:cH }) {
@@ -310,123 +287,162 @@ class PasL extends PointTracker {
 
 	_emitActive(points, data) {
 
-		const { left, top, width, height, locked } = this;
+		const { left, top, right, bottom, locked } = this;
 
-		let flag = 0x00000000, is_init = data.hasOwnProperty('flag');
+		let movs = 0x00000000, is_init = !data.hasOwnProperty('movs');
 
 		for (let i = 0, k = 0; i < points.length; i++, k += 4) {
 
 			const [ name, cf ] = points[i].el.classList;
 
-			if (name === 'pasL-rcons') {
-				flag |= PasL.parseCF(cf, locked) << k;
-			}
+			movs |= (
+				name === 'pasL-rcons' ? parseCMark(cf, locked) : 0xF
+			) << k;
 		}
-		data.t = top, data.h = height, data.lock = locked,
-		data.l = left, data.w = width, data.flag = flag;
-		if (is_init) {
-			this.box.dispatchEvent(
-				new CustomEvent(PasL.onStartEvent, { bubbles: true })
-			);
-		}
+		data.sT = top, data.sB = bottom, data.lock = locked,
+		data.sL = left, data.sR = right, data.movs = movs;
+		is_init && this.box.dispatchEvent(
+			new CustomEvent(PasL_onStart, { bubbles: true })
+		);
 	}
 	_emitChange(points, data) {
 
 		const { zoneW, zoneH } = this;
-		let { t, l, w, h, flag, lock } = data;
+		let { sL, sT, sR, sB, movs, lock } = data,
+
+		 top = sT, bottom = sB, height = zoneH - sT - sB,
+		left = sL, right  = sR, width  = zoneW - sL - sR;
 
 		for (let { x, y } of points) {
-			const rex = flag & 0x1, cew = flag & 0x4,
-			      rey = flag & 0x2, ceh = flag & 0x8;
+			const movL = movs & 0x1, movR = movs & 0x4,
+			      movT = movs & 0x2, movB = movs & 0x8;
 
-			flag >>= 4;
-			if (cew || ceh) {
-				let _1 = rex ? zoneW - l - w : l;
-				let _2 = rey ? zoneH - t - h : t;
-
-				w += (rex ? -x : x);
-				h += (rey ? -y : y);
-
-				if (lock)
-					w = h = (w < h ? h : w);
-				 if (cew) {
-					this.width = (w = zoneW - _1 < w ? zoneW - _1 : w < 0 ? 0 : w);
-					this[rex ? 'left' : 'right'] = zoneW - _1 - w;
-				 }
-				 if (ceh) {
-					this.height = (h = zoneH - _2 < h ? zoneH - _2 : h < 0 ? 0 : h);
-					this[rey ? 'top' : 'bottom'] = zoneH - _2 - h;
-				 }
-			} else {
-				l += x, t += y;
-				this.left = (l = zoneW - w < l ? zoneW - w : l < 0 ? 0 : l);
-				this.top  = (t = zoneH - h < t ? zoneH - h : t < 0 ? 0 : t);
-				this.right  = zoneW - l - w;
-				this.bottom = zoneH - t - h;
+			if (lock && (movs & 0xF) !== 0xF) {
+				let w = width + x, h = height + y,
+				   re = movR && movT || movB && movL;
+				if (height < width) {
+					h = Math.floor(w * (height / width));
+					y = re ? height - h : h - height;
+				} else {
+					w = Math.floor(h * (width / height));
+					x = re ? width - w : w - width;
+				}
 			}
+			let maxR = zoneW - left,
+			    maxL = zoneW - (movR ? width : right),
+				maxB = zoneH - top,
+			    maxT = zoneH - (movB ? height : bottom);
+
+			let xl = sL + x, yt = sT + y,
+			    xr = sR - x, yb = sB - y;
+
+			if (movL) {
+				left = xl < 0 ? 0 : xl > maxL ? maxL : xl;
+				if (movR)
+					right = zoneW - left - width;
+			} else if (movR)
+				right = xr < 0 ? 0 : xr > maxR ? maxR : xr;
+
+			if (movT) {
+				top = yt < 0 ? 0 : yt > maxT ? maxT : yt;
+				if (movB)
+					bottom = zoneH - top - height;
+			} else if (movB)
+				bottom = yb < 0 ? 0 : yb > maxB ? maxB : yb;
+
+			width  = zoneW - left - right;
+			height = zoneH - top - bottom;
+			movs >>= 4;
 		}
+		Object.assign(this, {
+			top, left, right, bottom, width, height
+		});
 		this.box.dispatchEvent(
-			new CustomEvent(PasL.onChangeEvent, { bubbles: true })
+			new CustomEvent(PasL_onChange, { bubbles: true, detail: {
+				x: top, y: left, w: width, h: height
+			}})
 		);
 	 }
 	_emitRelease() {
 		this.box.dispatchEvent(
-			new CustomEvent(PasL.onEndEvent, { bubbles: true })
+			new CustomEvent(PasL_onEnd, { bubbles: true })
 		);
 	}
 };
 
-PasL.onStartEvent  = 'PasL start';
-PasL.onChangeEvent = 'PasL change';
-PasL.onEndEvent    = 'PasL end';
+const makeLocker = (locked = false) => {
+	const svg = new DOMParser().parseFromString(`
+<svg class="pasL-lock" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 43 43">
+  <path d="M 15,20.5 C 15,20.5 13,7 22,7 31,7 29,20.5 29,20.5" fill="none" stroke-width="3"/>
+  <rect width="25" height="16" x="9.5" y="20" rx="1.5" ry="8"/>
+</svg>`, 'image/svg+xml').documentElement;
+	if (locked)
+		svg.classList.add('locked');
+	svg.addEventListener(winHasMultiTouch ? 'touchstart' : 'click', e => {
+		e.stopPropagation();
+		svg.classList.toggle('locked');
+	});
+	return svg;
+}
 
-const getPoint2D = (a,b) => Math.sqrt(
-	(a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)
-);
+/** parse the Corner Markers:
+ **  `t-l` (Top-Left) => x `0 0 1 1`
+ **  `c-r` (Center-Right) => x `0 1 0 0`, etc.
+*/
+const parseCMark = (cf = '', lock = false) => {
 
-PasL.parseCF = (cf = '', lock = false) => {
-
-	let rex = false, rey = false, cew = false, ceh = false;
+	let ml = false, mt = false, mr = false, mb = false;
 
 	const c = cf.charAt(0), f = cf.charAt(2);
 
 	if (c === 'c') {
-		rex = ((lock && f === 't') || f === 'l');
-		rey = ((lock && f === 'l') || f === 't');
-		cew = ( lock || f === 'l'  || f === 'r');
-		ceh = ( lock || f === 't'  || f === 'b');
+		ml = (f === 'l' || (lock && f === 'b'));
+		mt = (f === 't' || (lock && f === 'l'));
+		mr = (f === 'r' || (lock && f === 't'));
+		mb = (f === 'b' || (lock && f === 'r'));
 	} else {
-		rex = (c === 'l'), cew = true;
-		rey = (f === 't'), ceh = true;
+		ml = (c === 'l'), mr = (c === 'r');
+		mt = (f === 't'), mb = (f === 'b');
 	}
-	return (rex << 0x0) | (rey << 0x1) | (cew << 0x2) | (ceh << 0x3); 
+	return (ml << 0x0) | (mt << 0x1) | (mr << 0x2) | (mb << 0x3); 
 } 
 
-// simple utility for create/change DOM elements
+/** simple utility for create/change DOM elements
+ * * 0: @tagName `span` `div` or @NodeElement
+ * * 1: @DOMLevel2 `id` `class` `onmouseover` `"my-prop"` = `string` | `number` | `function`
+ * * 2: @DOMLevel3 `click` `mouseover` = `function` or `[ ...functions ]`
+*/
 function _setup(el, attrs, events) {
-// example 1:
-// const el = _setup('span', { class: 'ex-elem', text: 'example' }, { click: () => console.log('hey there') });
+
 	if (!el)
 		return '';
-// example 2:
-//_setup(document.querySelector('.ex-elem'), { text: 'touch me', 'my-own-property': 'ok!', onmouseenter: ({ target }) => console.log(target.getAttribute('my-own-property')) });
-	switch (typeof el) {
-		case 'string':
-			el = document.createElement(el);
-		case 'object':
-			for (const key in attrs) {
-				attrs[key] === undefined ? el.removeAttribute(key) :
-				key === 'html' ? el.innerHTML   = attrs[key] :
-				key === 'text' ? el.textContent = attrs[key] :
-				key in el    && (el[key]        = attrs[key] ) == attrs[key]
-							 &&  el[key]       == attrs[key] || el.setAttribute(key, attrs[key]);
-			}
-			for (const name in events) {
-				if (Array.isArray(events[name]))
-					events[name].forEach(handler => el.addEventListener(name, handler, false));
-				else
-					el.addEventListener(name, events[name], false);
-			}
+	if (typeof el === 'string')
+		el = document.createElement(el);
+
+	let hasContent = false, text = '', html = '';
+	for (const key in attrs) {
+		 const val = attrs[key];
+
+		/**/ if (key === 'html')
+			html = val, text = '', hasContent = true;
+		else if (key === 'text')
+			text = val, html = '', hasContent = true;
+		else if (val === undefined)
+			el.removeAttribute(key);
+		else if (!(key in el && (el[key] = val, el[key] == val)))
+			el.setAttribute(key, val);
+	}
+	if (hasContent) {
+		const doc = html && new DOMParser().parseFromString(html, 'text/html');
+		el.textContent = text;
+		if (doc) el.append( ...doc.body.children );
+	}
+	for (const name in events) {
+		 const func = events[name];
+		if (Array.isArray(func))
+			func.forEach(handler => el.addEventListener(name, handler));
+		else
+			el.addEventListener(name, func);
 	}
 	return el;
 }

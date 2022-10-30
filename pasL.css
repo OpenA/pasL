@@ -28,6 +28,11 @@
 	width : 18px; right: -24px;
 	height: 18px; top: 0;
 }
+.pasL-ruler {
+	position: absolute;
+	color: white;
+	font: bold 13px monospace;
+}
 .pasL-lock > path { stroke: #cdef10; transform: translate(-6px); }
 .pasL-lock > rect { fill  : #cdef10; transform: translate( 6px); }
    .locked > path { stroke: #ef1010; transform: translate(0); }
@@ -134,14 +139,18 @@
 
 @media only screen and (-webkit-min-device-pixel-ratio: 2), 
        only screen and (min-device-pixel-ratio: 2) {
-	.pasL-rcons.l-t { top:    -30px; left : -30px; }
-	.pasL-rcons.r-t { top:    -30px; right: -30px; }
-	.pasL-rcons.l-b { bottom: -30px; left : -30px; }
-	.pasL-rcons.r-b { bottom: -30px; right: -30px; }
+	.pasL-rcons.l-t { top:    -17px; left : -17px; }
+	.pasL-rcons.r-t { top:    -17px; right: -17px; }
+	.pasL-rcons.l-b { bottom: -17px; left : -17px; }
+	.pasL-rcons.r-b { bottom: -17px; right: -17px; }
 	.pasL-rcons.l-t, .pasL-rcons.r-b,
 	.pasL-rcons.r-t, .pasL-rcons.l-b {
-		padding: 30px;
+		padding: 17px;
 		border-radius: 100%;
+	}
+	.pasL-lock {
+		width: 34px; right: -36px;
+		height: 34px; top: 6px;
 	}
 	.pasL-rcons.c-t { border-top-width: 6px; top: -7px; }
 	.pasL-rcons.c-l { border-left-width: 6px; left: -7px; }
