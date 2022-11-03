@@ -296,7 +296,7 @@ class PasL extends PointTracker {
 			const [ name, cf ] = points[i].el.classList;
 
 			movs |= (
-				name === 'pasL-rcons' ? parseCMark(cf, locked) : 0xF
+				name === 'pasL-rcons' ? PasL.parseCMark(cf, locked) : 0xF
 			) << k;
 		}
 		data.sT = top, data.sB = bottom, data.lock = locked,
@@ -389,7 +389,7 @@ const makeLocker = (locked = false) => {
  **  `t-l` (Top-Left) => x `0 0 1 1`
  **  `c-r` (Center-Right) => x `0 1 0 0`, etc.
 */
-const parseCMark = (cf = '', lock = false) => {
+PasL.parseCMark = (cf = '', lock = false) => {
 
 	let ml = false, mt = false, mr = false, mb = false;
 
@@ -405,7 +405,7 @@ const parseCMark = (cf = '', lock = false) => {
 		mt = (f === 't'), mb = (f === 'b');
 	}
 	return (ml << 0x0) | (mt << 0x1) | (mr << 0x2) | (mb << 0x3); 
-} 
+};
 
 /** simple utility for create/change DOM elements
  * * 0: @tagName `span` `div` or @NodeElement

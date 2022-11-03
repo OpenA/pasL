@@ -97,9 +97,9 @@
 	position: absolute;
 	padding: 4.5px;
 }
-.towL-point.e-d, .towL-point.s-d {
+.towL-point.d-e, .towL-point.d-s {
 	border-width: 1px 0 0 0;
-	height: 0;
+	height: 0; top: 50%;
 }
 .towL-text.act-v {
 	border: 1px dotted white;
@@ -108,16 +108,13 @@
 .towL-select:not(.act-v) * {
 	display: none;
 }
-.towL-point.e-d, .towL-point.s-d {
-	top: 50%;
+.towL-point.d-s {
+	left: 0;
 }
-.towL-line > .towL-point.s-d {
-	left: 0; width: 10px;
+.towL-point.d-e {
+	right: 0;
 }
-.towL-line > .towL-point.e-d {
-	right: 0; width: 10px;
-}
-.towL-point.r-o-t {
+.towL-point.d-r {
 	transform-origin: top;
 	left: 50%; top: 50%;
 	width: 0; height: 50%;
@@ -125,15 +122,15 @@
 	padding-bottom: 10px;
 	cursor: grabbing;
 }
-.towL-point.r-o-t:before {
+.towL-point.d-r:before {
 	background-color: darkseagreen;
 	bottom: -5px; left: -5px;
 }
-.towL-point.s-d:before {
-	top: -5px; left: -5px;
-}
-.towL-point.e-d:before {
+.towL-point.d-s:before {
 	top: -5px; right: -5px;
+}
+.towL-point.d-e:before {
+	top: -5px; left: -5px;
 } /* = = = = = = = = */
 
 
