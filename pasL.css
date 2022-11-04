@@ -87,7 +87,7 @@
 /* === towL elements style === */
 .towL-select.act-v, .towL-point {
 	position: absolute;
-	border: 1px dashed black;
+	outline: dashed 1px black;
 }
 .towL-point:before {
 	content: '';
@@ -103,7 +103,7 @@
 }
 .towL-text.act-v {
 	border: 1px dotted white;
-	outline: dotted 1px black;
+	outline-style: dotted;
 }
 .towL-select:not(.act-v) * {
 	display: none;

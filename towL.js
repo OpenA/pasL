@@ -160,7 +160,7 @@ TowL.select_circle = TowL.select_ellipse = TowL.select_rect = (
 	const xR = el.rx.baseVal.value, hasWH = 'width' in el,
 	      yR = el.ry.baseVal.value;
 
-	let _W, _H, _X, _Y, cX, cY;
+	let _W, _H, _X, _Y, cX, cY; pad += Number(el.getAttribute('stroke-width'));
 	if (hasWH) {
 		_W = el.width.baseVal.value,  _X = el.x.baseVal.value, cX = _X +_W * .5;
 		_H = el.height.baseVal.value, _Y = el.y.baseVal.value, cY = _Y +_H * .5;
@@ -207,40 +207,48 @@ TowL.select_circle = TowL.select_ellipse = TowL.select_rect = (
 
 TowL.select_line = (el, sel, scale, ratio, pad) => {
 
-	const X1 = el.x1.baseVal.value, X2 = el.x2.baseVal.value,
-		  Y1 = el.y1.baseVal.value, Y2 = el.y2.baseVal.value,
-		 rex = X1 > X2, rey = Y1 > Y2;
+	let x1 = el.x1.baseVal.value, x2 = el.x2.baseVal.value,
+	    y1 = el.y1.baseVal.value, y2 = el.y2.baseVal.value,
+	   rex = x1 > x2, rey = y1 > y2; pad += Number(el.getAttribute('stroke-width'));
 
-	const left = (rex ? X2 : X1) * scale, width = (rex ? X1 - X2 : X2 - X1) * scale,
-		  top = (rey ? Y2 : Y1) * scale, height = (rey ? Y1 - Y2 : Y2 - Y1) * scale;
+	const X1 = rex ? x2 : x1, Y1 = rex ? y2 : y1,
+	      X2 = rex ? x1 : x2, Y2 = rex ? y1 : y2;
 
-	sel.style.left = `${left - pad}px`, sel.style.width = `${width + pad * 2}px`;
-	sel.style.top = `${top - pad}px`, sel.style.height = `${height + pad * 2}px`;
+	const left = X1 * scale - pad,
+	     width = (X2 - X1) * scale + pad * 2,
+	       top = (rey ? Y2 : Y1) * scale - pad,
+	    height = (rey ? Y1 - Y2 : Y2 - Y1) * scale + pad * 2;
+
+	sel.style.left = `${left}px`, sel.style.width = `${width}px`;
+	sel.style.top = `${top}px`, sel.style.height = `${height}px`;
 
 	return { matrix: { x: 0, y: 0, p: [] },
 
-		transform({x, y, p: [,sp,ep]}) {
-			let x1 = left + x, w = width, x2 = x1 + w,
-				y1 = top + y, h = height, y2 = y1 + h;
+		transform({x, y, p}) {
+			let w, nx, x1 = X1 +(p[1] ? p[1].x : x)* ratio, y1 = Y1 +(p[1] ? p[1].y : y)* ratio,
+			    h, ny, x2 = X2 +(p[2] ? p[2].x : x)* ratio, y2 = Y2 +(p[2] ? p[2].y : y)* ratio;
 
-			if (sp) {
-				x1 += sp.x, y1 += sp.y;
-				if ((w -= sp.x) < 0) w = 0, x1 = x2;
-				if ((h -= sp.y) < 0) h = Math.abs(h);
+			if (p.length) {
+				if (p[1] && x1 > x2) x1 = x2;
+				if (p[1] && Math.floor(y1) === y2) y1 = y2;
+				if (p[2] && x2 < x1) x2 = x1;
+				if (p[2] && Math.floor(y2) === y1) y2 = y1;
+
+				w = (x2 - x1) * scale + pad * 2, nx = x1 * scale - pad;
+				h = (y2 > y1 ? y2 - y1 : y1 - y2) * scale + pad * 2;
+				ny = (y2 > y1 ? y1 : y2) * scale - pad;
+
+				sel.children[0].style.top = y2 === y1 ? null : y2 > y1 ? 0 : '100%';
+				sel.children[1].style.top = y2 === y1 ? null : y2 > y1 ? '100%' : 0;
+			} else {
+				nx = left + x, w = width,
+				ny = top + y, h = height;
 			}
-			if (ep) {
-				x2 += ep.x, y2 += ep.y;
-				if ((w += ep.x) < 0) w = 0, x2 = x1;
-				if ((h += ep.y) < 0) h = Math.abs(h);
-			}
-			sel.children[0].style.top = y1 < y2 ? 0 : y1 > y2 ? '100%' : null;
-			sel.children[1].style.top = y1 < y2 ? '100%' : y1 > y2 ? 0 : null;
+			sel.style.left = `${nx}px`; sel.style.width  = `${w}px`;
+			sel.style.top  = `${ny}px`; sel.style.height = `${h}px`;
 
-			sel.style.left = `${x1 - pad}px`; sel.style.width  = `${w + pad * 2}px`;
-			sel.style.top  = `${(y1 < y2 ? y1 : y2) - pad}px`; sel.style.height = `${h + pad * 2}px`;
-
-			el.x2.baseVal.value = x2 * ratio; el.x1.baseVal.value = x1 * ratio;
-			el.y2.baseVal.value = y2 * ratio; el.y1.baseVal.value = y1 * ratio;
+			el.x2.baseVal.value = x2; el.x1.baseVal.value = x1;
+			el.y2.baseVal.value = y2; el.y1.baseVal.value = y1;
 		}
 	}
 };
@@ -260,8 +268,8 @@ TowL.select_text = (el, sel, scale, ratio, pad) => {
 		transform({x, y, p: [a]}) {
 			sel.style.left = `${left + x}px`;
 			sel.style.top  = `${top  + y}px`;
-			let cx = (el.x.baseVal[0].value = sX + x * ratio) + sW / 2;
-			let cy = (el.y.baseVal[0].value = sY + y * ratio) + sH / 2;
+			let cx = (el.x.baseVal[0].value = sX + x * ratio) + sW * .5;
+			let cy = (el.y.baseVal[0].value = sY + y * ratio) + sH * .5;
 			TowL.rotate_figure(el, cx, cy, sel.lastElementChild, a);
 		}
 	}
