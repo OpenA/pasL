@@ -208,44 +208,42 @@ TowL.select_circle = TowL.select_ellipse = TowL.select_rect = (
 TowL.select_line = (el, sel, scale, ratio, pad) => {
 
 	let x1 = el.x1.baseVal.value, x2 = el.x2.baseVal.value,
-	    y1 = el.y1.baseVal.value, y2 = el.y2.baseVal.value,
-	   rex = x1 > x2, rey = y1 > y2; pad += Number(el.getAttribute('stroke-width'));
+	    y1 = el.y1.baseVal.value, y2 = el.y2.baseVal.value;
+	  pad += Number(el.getAttribute('stroke-width'));
 
-	const X1 = rex ? x2 : x1, Y1 = rex ? y2 : y1,
-	      X2 = rex ? x1 : x2, Y2 = rex ? y1 : y2;
+	const sel_bounds = (x1, x2, y1, y2) => {
+		const l = x1 * scale,
+		      w = (x2 - x1) * scale,
+		      t = (y1 > y2 ? y2 : y1) * scale,
+		      h = (y1 > y2 ? y1 - y2 : y2 - y1) * scale;
 
-	const left = X1 * scale - pad,
-	     width = (X2 - X1) * scale + pad * 2,
-	       top = (rey ? Y2 : Y1) * scale - pad,
-	    height = (rey ? Y1 - Y2 : Y2 - Y1) * scale + pad * 2;
+		sel.style.left = `${l - pad}px`, sel.style.width = `${w + pad * 2}px`;
+		sel.style.top = `${t - pad}px`, sel.style.height = `${h + pad * 2}px`;
+	};
+	const rX = x1 > x2,
+	      X1 = rX ? x2 : x1, Y1 = rX ? y2 : y1,
+	      X2 = rX ? x1 : x2, Y2 = rX ? y1 : y2;
 
-	sel.style.left = `${left}px`, sel.style.width = `${width}px`;
-	sel.style.top = `${top}px`, sel.style.height = `${height}px`;
+	sel_bounds(X1, X2, Y1, Y2);
 
 	return { matrix: { x: 0, y: 0, p: [] },
 
 		transform({x, y, p}) {
-			let w, nx, x1 = X1 +(p[1] ? p[1].x : x)* ratio, y1 = Y1 +(p[1] ? p[1].y : y)* ratio,
-			    h, ny, x2 = X2 +(p[2] ? p[2].x : x)* ratio, y2 = Y2 +(p[2] ? p[2].y : y)* ratio;
+			let x1 = X1, y1 = Y1, x2 = X2, y2 = Y2;
 
 			if (p.length) {
-				if (p[1] && x1 > x2) x1 = x2;
-				if (p[1] && Math.floor(y1) === y2) y1 = y2;
-				if (p[2] && x2 < x1) x2 = x1;
-				if (p[2] && Math.floor(y2) === y1) y2 = y1;
-
-				w = (x2 - x1) * scale + pad * 2, nx = x1 * scale - pad;
-				h = (y2 > y1 ? y2 - y1 : y1 - y2) * scale + pad * 2;
-				ny = (y2 > y1 ? y1 : y2) * scale - pad;
+				if (p[1] && (x1 += p[1].x * ratio) > x2) x1 = x2;
+				if (p[1] && Math.floor((y1 += p[1].y * ratio)) === y2) y1 = y2;
+				if (p[2] && (x2 += p[2].x * ratio) < x1) x2 = x1;
+				if (p[2] && Math.floor((y2 += p[2].y * ratio)) === y1) y2 = y1;
 
 				sel.children[0].style.top = y2 === y1 ? null : y2 > y1 ? 0 : '100%';
 				sel.children[1].style.top = y2 === y1 ? null : y2 > y1 ? '100%' : 0;
 			} else {
-				nx = left + x, w = width,
-				ny = top + y, h = height;
+				x1 += x * ratio, y1 += y * ratio,
+				x2 += x * ratio, y2 += y * ratio;
 			}
-			sel.style.left = `${nx}px`; sel.style.width  = `${w}px`;
-			sel.style.top  = `${ny}px`; sel.style.height = `${h}px`;
+			sel_bounds(x1,x2,y1,y2);
 
 			el.x2.baseVal.value = x2; el.x1.baseVal.value = x1;
 			el.y2.baseVal.value = y2; el.y1.baseVal.value = y1;
