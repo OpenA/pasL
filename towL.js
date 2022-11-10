@@ -3,7 +3,7 @@ class TowL extends PointTracker {
 
 	constructor() {
 
-		const _Box = _setup('div', { class: 'towL-box', style: 'position: absolute;' }),
+		const _Box = _cnode('div', { className: 'towL-box', style: 'position: absolute;' }),
 		      _Svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 		
 		_Svg.setAttribute('xmlns' ,'http://www.w3.org/2000/svg');
@@ -65,6 +65,9 @@ class TowL extends PointTracker {
 				stroke = 3;
 			attrs.x1 = x, attrs.x2 = x + w;
 			attrs.y1 =    attrs.y2 = y + stroke / 2;
+		} else if (type === 'triangle') {
+			type = 'polygon';
+			attrs.points = `${x},${y + h}, ${x+w/2},${y} ${x+w},${y+h}`;
 		} else {
 
 			attrs.x = x, attrs.y = y;
@@ -117,7 +120,7 @@ class TowL extends PointTracker {
 				el = (_sel = el.parentNode)._figure;
 				id = _sel.id.substring('sel_'.length);
 			} else if (!_sel) {
-				_sel = el._sel = TowL.createSelection(el.nodeName, 'sel_'+ id);
+				_sel = el._sel = TowL.createSelection(el.nodeName, id);
 				_sel._figure = el;
 			}
 			if (!(id in data)) {
@@ -153,6 +156,44 @@ class TowL extends PointTracker {
 		}
 	}
 }
+
+TowL.select_polygon = (
+	el, sel, scale, ratio, pad
+) => {
+	const sXA = new Array(el.points.length),
+	      sYA = new Array(el.points.length);
+
+	let iL = 0, iT = 0, iW = 0, iH = 0;
+
+	for(let i = 0; i < el.points.length; i++) {
+		let x = (sXA[i] = el.points[i].x);
+		let y = (sYA[i] = el.points[i].y);
+		if (x < sXA[iL]) iL = i; if (sXA[iW] < x) iW = i;
+		if (y < sYA[iT]) iT = i; if (sYA[iH] < y) iH = i;
+	}
+	sel.style.left = `${sXA[iL] * scale - pad}px`, sel.style.width = `${(sXA[iW] - sXA[iL]) * scale + pad * 2}px`;
+	sel.style.top = `${sYA[iT] * scale - pad}px`, sel.style.height = `${(sYA[iH] - sXA[iT]) * scale + pad * 2}px`;
+
+	return { matrix: { x: 0, y: 0, w: 0, h: 0, p: [] },
+
+		transform({x, y, w, h, p}) {
+
+			if (p.length) {
+				let ix = p[1] ? iL : iW, iw = p[1] ? p[1].x : p[2].x,
+				    iy = p[1] ? iT : iH, ih = p[1] ? p[1].y : p[2].y;
+				el.points[ix].x = sXA[ix] + iw * ratio;
+				el.points[iy].y = sYA[iy] + ih * ratio;
+			} else if (x || y) {
+				for (let i = 0; i < el.points.length; i++) {
+					el.points[i].x = sXA[i] + x * ratio;
+					el.points[i].y = sYA[i] + y * ratio;
+				}
+				sel.style.left = `${sXA[iL] * scale + x - pad}px`;
+				sel.style.top  = `${sYA[iT] * scale + y - pad}px`;
+			}
+		}
+	}
+};
 
 TowL.select_circle = TowL.select_ellipse = TowL.select_rect = (
 	el, sel, scale, ratio, pad
@@ -314,23 +355,23 @@ TowL.rotate_figure = (el, cx, cy, sel, mov) => {
 	}
 }
 
-TowL.createSelection = (type, id) => {
-	const sel = _setup('div', { id, class: 'towL-select towL-'+ type, style: 'position: absolute;' }),
+TowL.createSelection = (type, fid) => {
+	const sel = _cnode('div', { id: 'sel_'+ fid, className: 'towL-select towL-'+ type, style: 'position: absolute;' }),
 	     clss = [];
 
 	switch(type) {
+	case 'polygon':
 	case 'line': clss.push('towL-point d-s', 'towL-point d-e'); break;
 	case 'rect': clss.push('towL-point d-s');
 	case 'ellipse':
-		//sel.append( makeLocker(false) );
 	case 'circle':
 		clss.push('pasL-rcons l-t', 'pasL-rcons r-t', 'pasL-rcons l-b', 'pasL-rcons r-b');
 	default:
-		if (type !== 'circle')
+		if (!/^(?:circle|polygon)$/.test(type))
 			clss.push('towL-point d-r');
 	}
-	for (const name of clss) {
-		sel.appendChild(document.createElement('div')).className = name;
+	for (const className of clss) {
+		sel.append( _cnode('div', { className }) );
 	}
 	return sel;
 }

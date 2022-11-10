@@ -44,7 +44,7 @@ class PointTracker {
 	*/
 	_emitRelease() {}
 
-	trackPoint(elem, use_p = true) {
+	trackPoint(elem, use_p = false) {
 
 		const type = use_p && winHasPointer ? 'pointer' : 'mouse';
 
@@ -161,13 +161,13 @@ class PasL extends PointTracker {
 
 		const { lock = false, edgies = false, ruler = true } = opts;
 
-		const _Box = _setup('div', { class: 'pasL-box', style: 'position: absolute;'}),
-		   _Select = _setup('div', { class: 'pasL-select' }),
-		   _Top    = _setup('div', { class: 'pasL-row pasL-dark' }),
-		   _Right  = _setup('div', { class: 'pasL-col pasL-dark' }),
-		   _Left   = _setup('div', { class: 'pasL-col pasL-dark' }),
-		   _Bottom = _setup('div', { class: 'pasL-row pasL-dark' }),
-		   _Center = _setup('div', { class: 'pasL-col' });
+		const _Box = _cnode('div', { className: 'pasL-box', style: 'position: absolute;'}),
+		   _Select = _cnode('div', { className: 'pasL-select' }),
+		   _Top    = _cnode('div', { className: 'pasL-row pasL-dark' }),
+		   _Right  = _cnode('div', { className: 'pasL-col pasL-dark' }),
+		   _Left   = _cnode('div', { className: 'pasL-col pasL-dark' }),
+		   _Bottom = _cnode('div', { className: 'pasL-row pasL-dark' }),
+		   _Center = _cnode('div', { className: 'pasL-col' });
 
 		let _x1 = 0, _y1 = 0, _w = 0, _h = 0, _x2 = 0, _y2 = 0;
 		let _zw = 0, _zh = 0, locked = {};
@@ -181,21 +181,21 @@ class PasL extends PointTracker {
 		_Center.append( _Top , _Select, _Bottom );
 		// center horisontal block (selection block) has four absolute position corners
 		_Select.append(
-			_setup('div', { class: 'pasL-rcons l-t' }),
-			_setup('div', { class: 'pasL-rcons r-t' }),
-			_setup('div', { class: 'pasL-rcons l-b' }),
-			_setup('div', { class: 'pasL-rcons r-b' })
+			_cnode('div', { className: 'pasL-rcons l-t' }),
+			_cnode('div', { className: 'pasL-rcons r-t' }),
+			_cnode('div', { className: 'pasL-rcons l-b' }),
+			_cnode('div', { className: 'pasL-rcons r-b' })
 		);
 		if (edgies) { // and optional for active edges
 			_Select.prepend(
-				_setup('div', { class: 'pasL-rcons c-l' }),
-				_setup('div', { class: 'pasL-rcons c-t' }),
-				_setup('div', { class: 'pasL-rcons c-r' }),
-				_setup('div', { class: 'pasL-rcons c-b' })
+				_cnode('div', { className: 'pasL-rcons c-l' }),
+				_cnode('div', { className: 'pasL-rcons c-t' }),
+				_cnode('div', { className: 'pasL-rcons c-r' }),
+				_cnode('div', { className: 'pasL-rcons c-b' })
 			);
 		}
 		if (ruler) {
-			const rul = _setup('span', { class: 'pasL-ruler pasL-dark' }),
+			const rul = _cnode('span', { className: 'pasL-ruler pasL-dark' }),
 			    onAct = ({ type }) => {
 				rul.style.display = type === PasL_onEnd ? 'none' : null;
 			}
@@ -407,42 +407,7 @@ PasL.parseCMark = (cf = '', lock = false) => {
 	return (ml << 0x0) | (mt << 0x1) | (mr << 0x2) | (mb << 0x3); 
 };
 
-/** simple utility for create/change DOM elements
- * * 0: @tagName `span` `div` or @NodeElement
- * * 1: @DOMLevel2 `id` `class` `onmouseover` `"my-prop"` = `string` | `number` | `function`
- * * 2: @DOMLevel3 `click` `mouseover` = `function` or `[ ...functions ]`
-*/
-function _setup(el, attrs, events) {
-
-	if (!el)
-		return '';
-	if (typeof el === 'string')
-		el = document.createElement(el);
-
-	let hasContent = false, text = '', html = '';
-	for (const key in attrs) {
-		 const val = attrs[key];
-
-		/**/ if (key === 'html')
-			html = val, text = '', hasContent = true;
-		else if (key === 'text')
-			text = val, html = '', hasContent = true;
-		else if (val === undefined)
-			el.removeAttribute(key);
-		else if (!(key in el && (el[key] = val, el[key] == val)))
-			el.setAttribute(key, val);
-	}
-	if (hasContent) {
-		const doc = html && new DOMParser().parseFromString(html, 'text/html');
-		el.textContent = text;
-		if (doc) el.append( ...doc.body.children );
-	}
-	for (const name in events) {
-		 const func = events[name];
-		if (Array.isArray(func))
-			func.forEach(handler => el.addEventListener(name, handler));
-		else
-			el.addEventListener(name, func);
-	}
-	return el;
-}
+/** simple utility for create element with attributes*/
+const _cnode = (tag, attrs) => (
+	Object.assign(document.createElement(tag), attrs)
+);
