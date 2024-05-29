@@ -24,23 +24,23 @@ class PointTracker {
 	}
 
 	/** fired if 1 or more points still active on element
-	 * * 0: @Array  - list of points positions
-	 * * 1: @Object - user (for pass params between other methods)
-	 * * 2: @Event  - event
+	 * @Array  `0:` list of points positions
+	 * @Object `1:` user (for pass params between other methods)
+	 * @Event  `2:` event
 	*/
 	_emitActive() {}
 
 	/** fired if points change his position
-	 * * 0: @Array  - list of points offsets
-	 * * 1: @Object - user (for pass params between other methods)
-	 * * 2: @Event  - event
+	 * @Array  `0:` list of points offsets
+	 * @Object `1:` user (for pass params between other methods)
+	 * @Event  `2:` event
 	*/
 	_emitChange() {}
 
 	/** fired if all points removed or canceled
-	 * * 0: @Array  - list of last points positions
-	 * * 1: @Object - user (finish)
-	 * * 2: @Event  - event
+	 * @Array  `0:` list of last points positions
+	 * @Object `1:` user (finish)
+	 * @Event  `2:` event
 	*/
 	_emitRelease() {}
 
@@ -137,6 +137,7 @@ class PointTracker {
 		elem.addEventListener('touchcancel', onTouch);
 	}
 
+	/** calc distance from point changed coordinates*/
 	distance(p_x, p_y) {
 		return Math.sqrt(p_x * p_x + p_y * p_y);
 	}
@@ -161,16 +162,17 @@ class PasL extends PointTracker {
 
 		const { lock = false, edgies = false, ruler = true } = opts;
 
-		const _Box = _cnode('div', { className: 'pasL-box', style: 'position: absolute;'}),
-		   _Select = _cnode('div', { className: 'pasL-select' }),
-		   _Top    = _cnode('div', { className: 'pasL-row pasL-dark' }),
-		   _Right  = _cnode('div', { className: 'pasL-col pasL-dark' }),
-		   _Left   = _cnode('div', { className: 'pasL-col pasL-dark' }),
-		   _Bottom = _cnode('div', { className: 'pasL-row pasL-dark' }),
-		   _Center = _cnode('div', { className: 'pasL-col' });
+		const _Box = PasL.cnode('div', { className: 'pasL-box', style: 'position: absolute;'}),
+		   _Select = PasL.cnode('div', { className: 'pasL-select' }),
+		   _Top    = PasL.cnode('div', { className: 'pasL-row pasL-dark' }),
+		   _Right  = PasL.cnode('div', { className: 'pasL-col pasL-dark' }),
+		   _Left   = PasL.cnode('div', { className: 'pasL-col pasL-dark' }),
+		   _Bottom = PasL.cnode('div', { className: 'pasL-row pasL-dark' }),
+		   _Center = PasL.cnode('div', { className: 'pasL-col' }),
+		    locked = {};
 
-		let _x1 = 0, _y1 = 0, _w = 0, _h = 0, _x2 = 0, _y2 = 0;
-		let _zw = 0, _zh = 0, locked = {};
+		let _zw = 0, _x1 = 0, _w = 0, _x2 = 0, _r = 0,
+		    _zh = 0, _y1 = 0, _h = 0, _y2 = 0;
 
 		super({ elem: _Select });
 
@@ -181,33 +183,37 @@ class PasL extends PointTracker {
 		_Center.append( _Top , _Select, _Bottom );
 		// center horisontal block (selection block) has four absolute position corners
 		_Select.append(
-			_cnode('div', { className: 'pasL-rcons l-t' }),
-			_cnode('div', { className: 'pasL-rcons r-t' }),
-			_cnode('div', { className: 'pasL-rcons l-b' }),
-			_cnode('div', { className: 'pasL-rcons r-b' })
+			PasL.cnode('div', { className: 'pasL-rcons l-t' }),
+			PasL.cnode('div', { className: 'pasL-rcons r-t' }),
+			PasL.cnode('div', { className: 'pasL-rcons l-b' }),
+			PasL.cnode('div', { className: 'pasL-rcons r-b' })
 		);
 		if (edgies) { // and optional for active edges
 			_Select.prepend(
-				_cnode('div', { className: 'pasL-rcons c-l' }),
-				_cnode('div', { className: 'pasL-rcons c-t' }),
-				_cnode('div', { className: 'pasL-rcons c-r' }),
-				_cnode('div', { className: 'pasL-rcons c-b' })
+				PasL.cnode('div', { className: 'pasL-rcons c-l' }),
+				PasL.cnode('div', { className: 'pasL-rcons c-t' }),
+				PasL.cnode('div', { className: 'pasL-rcons c-r' }),
+				PasL.cnode('div', { className: 'pasL-rcons c-b' })
 			);
 		}
 		if (ruler) {
-			const rul = _cnode('span', { className: 'pasL-ruler pasL-dark' }),
+			const rul = PasL.cnode('span', { className: 'pasL-ruler pasL-dark' }),
 			    onAct = ({ type }) => {
 				rul.style.display = type === PasL_onEnd ? 'none' : null;
 			}
 			_Box.addEventListener(PasL_onEnd, onAct);
 			_Box.addEventListener(PasL_onStart, onAct);
 			_Box.addEventListener(PasL_onChange, ({ detail: { x,y,w,h } }) => {
+				if (_r > 0 && _r !== 1) {
+					x = Math.floor(x * _r), w = Math.floor(w * _r),
+					y = Math.floor(y * _r), h = Math.floor(h * _r);
+				}
 				rul.textContent = `x:${x} y:${y} ~ w:${w} h:${h}`;
 			});
 			Element.prototype.append.call(ruler & 0x2 ? _Bottom : _Top, rul);
 		}
 		if (lock & 0x2) {
-			const lck =_Select.appendChild( makeLocker(lock & 0x1) );
+			const lck =_Select.appendChild( PasL.mLocker(lock & 0x1) );
 
 			locked.get = () => lck.classList.contains('locked');
 			locked.set =  y => lck.classList[ y ? 'add' : 'remove' ]('locked');
@@ -218,8 +224,7 @@ class PasL extends PointTracker {
 			/* public */
 			box : { enumerable: true, value: _Box },
 
-			locked,
-
+		   ratio: { set: f => { _r = f > 0 ? f : 0 }, get: () => _r }, locked,
 		   zoneW: { set: i => { _Box   .style.width  = `${_zw = i}px`; }, get: () =>_zw },
 		   zoneH: { set: i => { _Box   .style.height = `${_zh = i}px`; }, get: () =>_zh },
 		    left: { set: i => { _Left  .style.width  = `${_x1 = i}px`; }, get: () =>_x1 },
@@ -276,13 +281,20 @@ class PasL extends PointTracker {
 		this.top  = y, this.height = h, this.bottom = zH - y - h;
 	}
 
-	// get real coordinates of selected area
-	getCoords(scale = 1) { 
-		const { left, top, width, height } = this;
-		return [
-			Math.floor(left * scale), Math.floor(top * scale), // returns real scale [X, Y, W, H] of selection
-			Math.floor(width * scale), Math.floor(height * scale), // it can be used in canvas for crop/cut image parts
-		]
+	/**  get real coordinates of selected area
+	 *   (use for crop/cut image parts)
+	 * 
+	 * @param {Number} ratio the result of `1 / scale` or `naturalWidth / width`
+	 * @return real scaled `x,y,w,h` of selection
+	 */
+	getCoords(ratio = this.ratio) { 
+		let { left: x, top: y, width: w, height: h } = this;
+
+		if (ratio > 0 && ratio !== 1) {
+			x = Math.floor(x * ratio), w = Math.floor(w * ratio),
+			y = Math.floor(y * ratio), h = Math.floor(h * ratio);
+		}
+		return [x, y, w, h];
 	}
 
 	_emitActive(points, data) {
@@ -370,12 +382,13 @@ class PasL extends PointTracker {
 	}
 };
 
-const makeLocker = (locked = false) => {
-	const svg = new DOMParser().parseFromString(`
-<svg class="pasL-lock" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 43 43">
-  <path d="M 15,20.5 C 15,20.5 13,7 22,7 31,7 29,20.5 29,20.5" fill="none" stroke-width="3"/>
-  <rect width="25" height="16" x="9.5" y="20" rx="1.5" ry="8"/>
-</svg>`, 'image/svg+xml').documentElement;
+PasL.mLocker = (locked = false) => {
+	const svg = PasL.svgel('svg' , { class: 'pasL-lock', viewBox: '0 0 43 43' }),
+	     path = PasL.svgel('path', { d: 'M 13,20.2 C 12,16 13,5 21.5,5 30,5 31,16 30,20.2 L 27,19.8 C 27,17 28,8 21.5,8 15,8 16,17 16,19.8 Z' }),
+	     rect = PasL.svgel('path', { d: 'm 10.5,19.5 c 0,0 -2,4 -2,8 0,5 2,8 2,8 h 22 c 0,0 2,-4 2,-8 0,-5 -2,-8 -2,-8 z' });
+
+	svg.append(path, rect);
+
 	if (locked)
 		svg.classList.add('locked');
 	svg.addEventListener(winHasMultiTouch ? 'touchstart' : 'click', e => {
@@ -383,7 +396,7 @@ const makeLocker = (locked = false) => {
 		svg.classList.toggle('locked');
 	});
 	return svg;
-}
+};
 
 /** parse the Corner Markers:
  **  `t-l` (Top-Left) => x `0 0 1 1`
@@ -407,7 +420,21 @@ PasL.parseCMark = (cf = '', lock = false) => {
 	return (ml << 0x0) | (mt << 0x1) | (mr << 0x2) | (mb << 0x3); 
 };
 
-/** simple utility for create element with attributes*/
-const _cnode = (tag, attrs) => (
-	Object.assign(document.createElement(tag), attrs)
+/** simple utility for create element with attributes
+ * @param {String} tag the name of an elem
+ * @return {HTMLElement}
+ */
+PasL.cnode = (tag, attrs = {}) => Object.assign(
+	document.createElement(tag), attrs
 );
+
+/** simple utility for create svg with attributes
+ * @param {String} tag the name of an svg elem
+ * @return {SVGElement}
+ */
+PasL.svgel = (tag, attrs = {}) => {
+	const svg = document.createElementNS('http://www.w3.org/2000/svg', tag);
+	for (const key in attrs)
+		svg.setAttribute(key, attrs[key]);
+	return svg;
+};

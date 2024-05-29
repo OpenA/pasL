@@ -33,10 +33,10 @@
 	color: white;
 	font: bold 13px monospace;
 }
-.pasL-lock > path { stroke: #cdef10; transform: translate(-6px); }
-.pasL-lock > rect { fill  : #cdef10; transform: translate( 6px); }
-   .locked > path { stroke: #ef1010; transform: translate(0); }
-   .locked > rect { fill  : #ef1010; transform: translate(0); }
+.pasL-lock > :first-child { fill: #cdef10; transform: translate(-8px); }
+.pasL-lock >  :last-child { fill: #cdef10; transform: translate( 6px); }
+svg.locked > :first-child { fill: #ef1010; transform: translate(0); }
+svg.locked >  :last-child { fill: #ef1010; transform: translate(0); }
 
 .pasL-rcons.l-t, .pasL-rcons.r-t, .pasL-rcons.l-b, .pasL-rcons.r-b {
 	padding: 4px;

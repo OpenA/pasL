@@ -3,12 +3,8 @@ class TowL extends PointTracker {
 
 	constructor() {
 
-		const _Box = _cnode('div', { className: 'towL-box', style: 'position: absolute;' }),
-		      _Svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-		
-		_Svg.setAttribute('xmlns' ,'http://www.w3.org/2000/svg');
-		_Svg.setAttribute('fill'  , 'white');
-		_Svg.setAttribute('stroke', 'black');
+		const _Box = PasL.cnode('div', { className: 'towL-box', style: 'position: absolute;' }),
+		      _Svg = PasL.svgel('svg', { xmlns: 'http://www.w3.org/2000/svg', fill:'white', stroke:'black' });
 
 		_Box.append(_Svg);
 
@@ -38,7 +34,7 @@ class TowL extends PointTracker {
 	}
 
 	/**
-	* @name String `rect | circle | ellipse | path | text | line | path`
+	* @param {String} type `rect | circle | ellipse | path | text | line | path`
 	*/
 	addFigure(type, params = {
 		x: 0, y: 0, w: 50, h: 50, svg_attrs: {}, content: ''
@@ -87,10 +83,8 @@ class TowL extends PointTracker {
 			attrs.id = 'figure_'+ (++i).toString();
 		} while (this.svg.children[attrs.id]);
 
-		const figure = document.createElementNS('http://www.w3.org/2000/svg', type);
+		const figure = PasL.svgel(type, attrs);
 
-		for (let key in attrs)
-			figure.setAttribute(key, attrs[key]);
 		if (stroke > 0)
 			figure.setAttribute('stroke-width', stroke);
 		if (is_text)
@@ -316,9 +310,8 @@ TowL.select_text = (el, sel, scale, ratio, pad) => {
 
 TowL.parsePMark = (cf = '') => {
 
-	let pin = 0, mod = 0;
-
-	const c = cf.charAt(0), f = cf.charAt(2);
+	let pin = 0, c = cf.charAt(0), 
+	    mod = 0, f = cf.charAt(2);
 	if (c === 'd') {
 		mod = 0x200, pin = (
 			f === 'r' ? 0x0 : f === 's' ? 0x1 :
@@ -355,8 +348,8 @@ TowL.rotate_figure = (el, cx, cy, sel, mov) => {
 	}
 }
 
-TowL.createSelection = (type, fid) => {
-	const sel = _cnode('div', { id: 'sel_'+ fid, className: 'towL-select towL-'+ type, style: 'position: absolute;' }),
+TowL.createSelection = (type, uid) => {
+	const sel = PasL.cnode('div', { id: `sel_${uid}`, className: `towL-select towL-${type}`, style: 'position: absolute;' }),
 	     clss = [];
 
 	switch(type) {
@@ -371,7 +364,7 @@ TowL.createSelection = (type, fid) => {
 			clss.push('towL-point d-r');
 	}
 	for (const className of clss) {
-		sel.append( _cnode('div', { className }) );
+		sel.append( PasL.cnode('div', { className }) );
 	}
 	return sel;
 }
