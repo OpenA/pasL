@@ -438,3 +438,6 @@ PasL.svgel = (tag, attrs = {}) => {
 		svg.setAttribute(key, attrs[key]);
 	return svg;
 };
+
+// Fix for background executeScript
+PasL.void = void 0;

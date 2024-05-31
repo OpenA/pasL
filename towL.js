@@ -368,3 +368,6 @@ TowL.createSelection = (type, uid) => {
 	}
 	return sel;
 }
+
+// Fix for background executeScript
+TowL.void = void 0;
