@@ -14,7 +14,7 @@ class PointTracker {
 
 		this.bubbles = bubbles;
 
-		if (elem instanceof Element) {
+		if (elem instanceof HTMLElement) {
 			if (winHasMultiTouch) {
 				this.trackMultiPoints(elem);
 			} else {
